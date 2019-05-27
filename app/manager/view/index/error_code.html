@@ -1,0 +1,258 @@
+
+<style type="text/css">
+</style>
+
+<template id="app_inside">
+    <div>
+        <!--页面标题栏-->
+        <v-toolbar flat color="white">
+            <v-toolbar-title>错误码管理</v-toolbar-title>
+            <v-divider class="mx-2" inset vertical></v-divider>
+            <v-menu :close-on-content-click="false" offset-y slide-x max-width="500">
+                <v-btn slot="activator" color="warning" dark><v-icon class="mr-2">help_outline</v-icon> 帮助</v-btn>
+                <div class="pa-2 bg-white">
+                    <ol>
+                        <li>原理：通过api交互后台后，后台最终返回以 ret( code , data , msg ) 形式，如在该页面定义code，直接调用 ret(41002) 即可返回相应的错误提示，在 ret 中，也可以自行指定 msg 的值</li>
+                        <li>常见错误码：0 - 操作成功，40001 必须的参数有误一般不会出现， 40002数据库操作有误，需要核查代码</li>
+                        <li>在 core.php 中，APP_DEBUG为TP的debug机制，关闭后，ret中将不显示code值</li>
+                        <li>ret方法为全局方法，所以该错误码全局都可用</li>
+                    </ol>
+                </div>
+            </v-menu>
+            <v-spacer></v-spacer>
+
+            <v-btn @click="open_form_create()" color="primary" dark class="mb-2"><i class="fa fa-plus mr-1"></i> 创建新错误码</v-btn>
+            <v-dialog v-model="form_opened_create" max-width="500px">
+                <v-card>
+                    <v-card-title>
+                        <div>
+                            <div class="title">创建新错误码</div>
+                        </div>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text>
+                        <v-form ref="ref_form_create" lazy-validation>
+                            <v-text-field disabled v-model="form_fields_create.code" :rules="[$com_rules.required]" label="错误码"></v-text-field>
+                            <v-text-field v-model="form_fields_create.val" label="错误提示"></v-text-field>
+                            <v-select v-model="form_fields_create.level" :items=" [0,1,2,3,4,5] " label="错误级别 - 可依据错误级别自行记录日志，暂无效"></v-select>
+                            <v-text-field disabled v-model="form_fields_create.lang" label="语言-暂无效"></v-text-field>
+                            <v-textarea v-model="form_fields_create.remark" label="内部备注"></v-textarea>
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="blue darken-1" flat @click.native="form_submit_create()">提交创建</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+            <v-dialog v-model="form_opened_update" max-width="500px">
+                <v-card>
+                    <v-card-title>
+                        <div>
+                            <div class="title">编辑接口</div>
+                            <div class="f14 text-muted">接口调用标识建议语义清晰，CONTROLLER建议业务分割。通用权限在用户组中设定，更细节的权限控制可以在控制器内自行编写。</div>
+                        </div>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text>
+                        <v-form ref="ref_form_update" lazy-validation>
+                            <v-text-field disabled v-model="form_fields_update.code" :rules="[$com_rules.required]" label="错误码"></v-text-field>
+                            <v-text-field v-model="form_fields_update.val" label="错误提示"></v-text-field>
+                            <v-select v-model="form_fields_update.level" :items=" [0,1,2,3,4,5] " label="错误级别 - 可依据错误级别自行记录日志，暂无效"></v-select>
+                            <v-text-field disabled v-model="form_fields_update.lang" label="语言-暂无效"></v-text-field>
+                            <v-textarea v-model="form_fields_update.remark" label="内部备注"></v-textarea>
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="blue darken-1" flat @click.native="form_submit_update()">提交保存</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+        </v-toolbar>
+
+        <com_search ref="search" :search_config.sync=" search " @do_search=" load_data "></com_search>
+        <!--表格模板-->
+        <v-data-table :headers="headers" :items="data_list" no-data-text="暂无数据" :pagination.sync="pagination" :loading="loading" hide-actions>
+            <template slot="items" slot-scope="props">
+                <td>{{ props.item.code }}</td>
+                <td>{{ props.item.val }}</td>
+                <td>{{ props.item.level }}</td>
+                <td>{{ props.item.lang }}</td>
+                <td>{{ props.item.remark }}</td>
+                <td>
+                    <v-icon class="mr-2" @click.stop="open_form_update(props.item)">edit</v-icon>
+                    <v-icon @click.stop="delete_selected(props.item)">delete</v-icon>
+                </td>
+            </template>
+        </v-data-table>
+
+        <div class="bg-white pa-1 text-xs-right">
+            <v-pagination :disabled="loading" v-model="page" @input=" load_data() " :length="total_pages" total-visible="9"></v-pagination>
+        </div>
+    </div>
+</template>
+
+
+<script>
+
+
+
+    var app_inside = {
+        data: function () {
+            return {
+                //表头，按字义理解，参考：https://vuetifyjs.com/zh-Hans/components/data-tables
+                headers: [
+                    { text: '错误标识', value: 'code', width: '150px' },
+                    { text: '错误提示', value: 'val'},
+                    { text: '级别', value: 'level', width: '80px'},
+                    { text: '预览', value: 'lang', width: '80px', sortable: false },
+                    { text: '备注', value: 'remark', sortable: false },
+                    { text: '操作', value: 'id', sortable: false }
+                ],
+
+                //翻页的配置，必须写
+                pagination: {
+                    rowsPerPage: -1,     //显示全部，推荐-1
+                    sortBy: null         //默认排序字段，推荐设置，descending = true && sortBy = 'id' 即 id desc
+                },
+
+                //分页的配置，可自定义
+                page_size: 20,
+                page: 1,
+                total_count:0,
+                data_list: [],
+                loading: false,
+
+                // 搜索配置，只是为了简单表单的开发方便，也可以自行定制，配合<com_search/>组件
+                // 配置说明：field，需要配置正确； value，不提交后台一定要设置 null，发送前会检测null值； list 是数组形式，可手动初始化，或指定list_source组件将发起ajax请求取回列表，需要后台给 text、value 形式的数组
+                // 在发送给后台前，会判定 type ，，后台抽取有效的 field 与 value 加入到 where 查询中，具体可见后台代码；
+                search: [{
+                        field: 'level',
+                        type: 'select',
+                        list: [0,1,2,3,4,5],
+                        label: '错误级别',
+                        value: null
+                    }, {
+                        field: 'code',
+                        type: 'text',
+                        label: '错误标识',
+                        value: null
+                    }
+                ],
+                //其他业务数据
+                //表单方面：可以放在一起，用字段控制，不过分开写比较好，比较清晰，而且有时新增和编辑的字段不同就需要更多字段控制，反而比较麻烦且不容易统一处理。
+                //新增的表单
+                form_opened_create: false,
+                form_fields_create: {
+                    code: '',
+                    val: '',
+                    level: 0,
+                    lang: 'zh',
+                    remark: ''
+                },
+
+                //编辑的表单
+                form_opened_update: false,
+                form_fields_update: {}
+            }
+        },
+        computed: {
+            total_pages: function () {  //分页的总页数获取，不用动
+                if (this.page_size == null || this.total_count == null) return 0;
+                return Math.ceil(this.total_count / this.page_size)
+            }
+        },
+        mounted: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        methods: {
+
+            //页面初始化，推荐统一编写，比较清晰
+            page_init: function () {
+                var _this = this;
+                _this.load_data();
+            },
+            //表格加载与方法
+            load_data: function ( reload ) {
+                var _this = this,
+                    _fields = {
+                        page: reload ? 1 : _this.page,
+                        page_size: _this.page_size,
+                        search: arguments[1]
+                    };
+                //通用方法
+                if (typeof arguments[1] == 'undefined') { _this.$nextTick(function () { _this.$refs.search.do_search(); }); return false; }
+                if ( reload ) _this.page = 1;
+                if ( _this.loading ) return false;
+                _this.loading = true;
+                //开始读取数据
+                api.send('error_code_list', _fields, function ( res ) {
+                    _this.total_count = res.total_count;
+                    _this.data_list = res.data_list || [];
+                    _this.loading = false;
+                }, null, { loading_show: false} );
+            },
+
+            //业务方法=======
+            open_form_create: function () {
+                var _this = this;
+                api.send('create_get_code', '', function ( res ) {
+                    _this.form_fields_create.code= res;
+                    _this.form_opened_create = true;
+                }, null, { loading_show: false} );
+            },
+            form_submit_create: function () {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form_fields_create);
+
+                //创建 _fields 来进行验证、格式化，不污染表单数据
+
+                if (this.$refs.ref_form_create.validate()) {
+                    api.send('error_code_create', _fields, function ( res ) {
+//                         _this.$refs.ref_form_create.reset();
+//                         _this.form_opened_create = false;
+                        _this.$refs.search.do_search();
+                        api.tips('创建成功，该新增不重置表单、不关闭窗口，方便连续提交。', 'success');
+                    } );
+                }
+            },
+
+            open_form_update: function ( item ) {
+                var _this = this;
+                _this.form_fields_update = Object.assign({}, item);
+                _this.form_opened_update = true;
+            },
+            form_submit_update: function () {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form_fields_update);
+
+                //创建 _fields 来进行验证、格式化，不污染表单数据
+
+                if (this.$refs.ref_form_update.validate()) {
+                    api.send('error_code_update', _fields, function ( res ) {
+                        _this.$refs.ref_form_update.reset();
+                        _this.form_opened_update = false;
+                        _this.$refs.search.do_search();
+                        api.tips('编辑成功', 'success');
+                    } );
+                }
+            },
+            delete_selected: function ( item ) {
+                var _this = this;
+                api.confirm('确认删除吗？', '删除后无法恢复', function () {
+                    api.send('error_code_delete', { id: item.id }, function ( res ) {
+                        _this.$refs.search.do_search();
+                        api.tips('删除成功', 'success');
+                    } );
+                });
+
+            }
+        },
+        template: '#app_inside'
+    }
+
+</script>

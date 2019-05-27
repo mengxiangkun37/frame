@@ -1,0 +1,1162 @@
+<style>
+    .cropper-container { background-repeat: repeat;}
+    .file-uploads {
+        overflow: hidden;
+        position: relative;
+        text-align: center;
+        display: inline-block;
+    }
+    .file-uploads.file-uploads-html5 input[type=file] {
+        background: rgba(255,255,255,0);
+        overflow: hidden;
+        position: fixed;
+        width: 1px;
+        height: 1px;
+        z-index: -1;
+        opacity: 0;
+    }
+    .img_border {
+        position: relative;
+        border: 1px solid #ccc9c9;
+        width: 210px;
+        overflow: hidden;
+    }
+
+    .img_border img {
+        width: 210px;
+        height: 150px;
+    }
+
+    .file_mask {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 999;
+        background-color: rgba(112, 110, 110, 0.616);
+
+    }
+
+    .mask_icon {
+        line-height: 200px;
+    }
+</style>
+
+<template id="com_search">
+    <v-container fluid class="bg-white" v-if=" search.length ">
+        <v-layout row align-center justify-space-between>
+            <div class="f16 text-muted flex_center" @click="show_fields = !show_fields">
+                <span>搜索过滤</span>
+                <v-icon>{{ show_fields ? 'keyboard_arrow_up' : 'keyboard_arrow_down' }}</v-icon>
+            </div>
+            <div>
+                <v-btn color="cyan" class="text-white" @click.native=" do_search( 'is_export' ) " v-if=" is_export "><i class="fa fa-external-link mr-1"></i> 导出数据</v-btn>
+                <v-btn color="info" @click.native=" do_search( 'reload' ) "><i class="fa fa-search mr-1"></i> 执行过滤</v-btn>
+            </div>
+        </v-layout>
+        <v-divider></v-divider>
+        <v-slide-y-transition mode="in-out">
+            <v-layout row wrap v-show="show_fields">
+                <v-flex xs12 sm6 md4 lg3 class="pa-1" v-for=" item in search " :key="item.field">
+                    <template v-if=" item.type == 'select' ">
+                        <v-select v-model=" item.value " :items=" item.list " :label=" item.label " clearable></v-select>
+                    </template>
+                    <template v-if=" item.type == 'text' ">
+                        <v-text-field v-model=" item.value " :label=" item.label " clearable></v-text-field>
+                    </template>
+                    <template v-if=" item.type == 'range' ">
+                        <v-layout align-center justify-center row fill-height>
+                            <v-flex xs6>
+                                <v-text-field v-model=" item.value[0] " type="number" :label=" item.label + '-下限' " clearable></v-text-field>
+                            </v-flex>
+                            <v-flex class="text-center mx-2">至</v-flex>
+                            <v-flex xs6>
+                                <v-text-field v-model=" item.value[1] " type="number" :label=" item.label + '-上限' " clearable></v-text-field>
+                            </v-flex>
+                        </v-layout>
+                    </template>
+                    <template v-if=" item.type == 'date_range' ">
+                        <v-layout align-center justify-center row fill-height v-if=" item.show_type == 'range' ">
+                            <v-flex xs6>
+                                <v-menu lazy offset-y full-width min-width="290px">
+                                    <template v-slot:activator="{ on }">
+                                        <v-text-field v-model="item.value[0]" :label=" item.label + '-起' " prepend-icon="event" readonly v-on="on" clearable></v-text-field>
+                                    </template>
+                                    <v-date-picker v-model="item.value[0]" locale="zh"></v-date-picker>
+                                </v-menu>
+                            </v-flex>
+                            <v-flex class="text-center mx-2">至</v-flex>
+                            <v-flex xs6>
+                                <v-menu lazy offset-y full-width min-width="290px">
+                                    <template v-slot:activator="{ on }">
+                                        <v-text-field v-model="item.value[1]" :label=" item.label + '-止' " prepend-icon="event" readonly v-on="on" clearable></v-text-field>
+                                    </template>
+                                    <v-date-picker v-model="item.value[1]" locale="zh"></v-date-picker>
+                                </v-menu>
+                            </v-flex>
+                        </v-layout>
+                        <v-menu lazy offset-y full-width min-width="290px" v-if=" item.show_type == 'single' ">
+                            <template v-slot:activator="{ on }">
+                                <v-text-field v-model="item.value[0]" :label=" item.label " prepend-icon="event" readonly v-on="on" clearable></v-text-field>
+                            </template>
+                            <v-date-picker v-model="item.value[0]" locale="zh"></v-date-picker>
+                        </v-menu>
+                    </template>
+                    <template v-if=" item.type == 'page_size' ">
+                        <v-select v-model=" $parent.page_size " :items=" item.list " :label=" item.label "></v-select>
+                    </template>
+                    <template v-if=" item.type == 'order' ">
+                        <v-select v-model=" order_value " :items=" item.list " :label=" item.label " clearable></v-select>
+                    </template>
+                    <template v-if=" item.type == 'multiple' ">
+                        <v-select v-model=" item.value " :items=" item.list " :label=" item.label " attach clearable multiple></v-select>
+                    </template>
+                </v-flex>
+            </v-layout>
+        </v-slide-y-transition>
+    </v-container>
+</template>
+
+
+
+<script>
+    Vue.component('com_search', {
+        props: {
+            search_config: {type: Array, default: [] },
+            auto_make:  {type: Object, default: function () {return { order: 2, page_size: 1}}},    //order参数：2自动添加id排序，1不添加，0关闭  page_size：是否生成页码
+            is_export:  false
+        },
+        data: function() {
+            return {
+                show_fields: true,
+                search: [],
+                order_value: null,
+                date_picker_opened: false
+            }
+        },
+        created: function () {
+            var _this = this,
+                _search = this.search_config;
+            if ( this.auto_make.order > 0 ){
+                var _list = [];
+                if ( _this.$parent.headers ){   //排序列表的生成，依据 header 的定义
+                    _this.$parent.headers.map( function ( head ) {
+                        if ( head.sortable !== false ){
+                            _list.push({text: head.text + ' - 降序', value: head.value + ' desc'});
+                            _list.push({text: head.text + ' - 升序', value: head.value + ' asc'});
+                        }
+                    });
+                }
+                if ( _this.auto_make.order == 2 ){
+                    _list.unshift({text: '默认ID - 降序', value: 'id desc'});
+                    _list.unshift({text: '默认ID - 升序', value: 'id asc'});
+                }
+                _search.push({field: '__order', type: 'order', list: _list, label: '排序规则', value: _this.order_value});
+            }
+            if ( this.auto_make.page_size > 0 ){
+                _search.push({field: '__page_size', type: 'page_size', list: [5,10,20,30,50], label: '每页显示条数', value: null });
+            }
+            _this.search = _search;
+        },
+        methods: {
+            do_search: function ( search_action ) {
+                var _this = this,
+                    _search = [],
+                    _reload = search_action == 'reload',
+                    _is_export = search_action == 'is_export';
+                _this.search_config.map( function ( s ) {
+                    if ( s.type == 'text' && s.value ){
+                        _search.push({field: s.field, value: s.value, type: s.type});
+                    }
+                    if ( s.type == 'range' ){
+                        //校验 值大小对比，是否有false
+                        var _val = [
+                            ( s.value[0] !== 0 && s.value[0] ) ? s.value[0] * 1 : false,
+                            ( s.value[1] !== 0 && s.value[1] ) ? s.value[1] * 1 : false
+                        ];
+                        if ( _val[0] > _val[1] && _val[0] !== false && _val[1] !== false ){
+                            _val.sort( function ( a, b) {
+                                return a - b;
+                            });
+                            s.value = _val;
+                        }
+                        if ( _val[0] !== false || _val[1] !== false ){
+                            _search.push({field: s.field, value: _val, type: s.type});
+                        }
+                    }
+                    if ( s.type == 'date_range' ){
+                        var _val = [
+                            ( !!s.value[0] ) ? getTimeStamp(s.value[0], true) : false,
+                            ( !!s.value[1] ) ? getTimeStamp(s.value[1], true) : false
+                        ];
+
+                        if ( s.show_type == 'single' ){
+                            _val[1] = _val[0];
+                        }
+
+                        if ( _val[0] > _val[1] && _val[0] !== false && _val[1] !== false ){
+                            var _temp = s.value[1];
+                            s.value[1] = s.value[0];
+                            s.value[0] = _temp;
+                            _val.sort( function ( a, b) {
+                                return a - b;
+                            });
+                        }
+                        _val[1] !== false && (_val[1] += 86399);
+                        if ( _val[0] !== false || _val[1] !== false ){
+                            _search.push({field: s.field, value: _val, type: 'range'});
+                        }
+                    }
+                    if ( ( s.type == 'select' ) && s.value != null ){
+                        if ( typeof s.find_in_set != 'undefined' && s.find_in_set == true ){
+                            _search.push({field: s.field, value: s.value, type: 'findinset'});
+                        }else{
+                            _search.push({field: s.field, value: s.value, type: s.type});
+                        }
+                    }
+                    if( ( s.type == 'multiple' ) && s.value != null && s.value.length > 0 ){
+                        _search.push({field: s.field, value: s.value.join(','), type: s.type});
+                    }
+                });
+                if ( _this.order_value != null ){
+                    _search.push({field: '__order', value: this.order_value, type: 'order'});
+                }
+                _this.$emit( 'do_search', _reload, _search, _is_export );
+            },
+            make_search_list: function ( field, list ) {
+                var _this = this;
+                _this.search_config.map( function ( s ) {
+                    if ( s.field == field ){
+                        var _search_list = [];
+                        list.map( function ( c ) {
+                            var _item = {
+                                text: c.title || c.text,
+                                value: c.id || c.value
+                            };
+                            if ( s.itemText ){
+                                _item.text = c[s.itemText];
+                            }
+                            if ( s.itemValue ){
+                                _item.value = c[s.itemValue];
+                            }
+                            _search_list.push(_item)
+                        });
+                        s.list = _search_list;
+                    }
+                });
+            },
+            export_json: function ( data_list, file_name ) {
+                var wb = XLSX.utils.book_new();
+                wb.SheetNames.push('sheet1');
+                wb.Sheets['sheet1'] = XLSX.utils.json_to_sheet( data_list, { skipHeader: true} );
+                XLSX.writeFile(wb, (file_name || 'export') + '.xlsx');
+            }
+        },
+        template: '#com_search'
+    })
+</script>
+
+
+<template id="com_upload_file">
+    <div class="w10">
+        <div class="flex  align-center">
+            <v-text-field v-model="file_url" :label="label" @click:append-outer="priview" :append-outer-icon=" 'image_search' " placeholder="输入路径 或 选择文件…">
+                <label slot="append" :for="name"><i class="fa fa-folder-open-o f18" ></i></label>
+            </v-text-field>
+            <div @click="resource_show =true" class="ml-2 hand"><i class="fa fa-file f18" ></i></div>
+        </div>
+      
+        <file_upload :extensions=" type == 'all' ? undefined : accept.extensions " :accept=" type == 'all' ? undefined : accept.mimeTypes " :name=" name " :post-action=" action " :data=" post_data " :drop="!edit" :size=" options.size " v-model="files" @input-filter="inputFilter" @input-file="inputFile" ref="upload"></file_upload>
+
+        <div class="pa-1" v-show="files.length && edit" >
+            <div v-if="files.length">
+                <img ref="editImage" :src="files[0].url" />
+            </div>
+            <div class="text-xs-center mt-2">
+                <v-btn-toggle>
+                    <v-btn outline @click.prevent="set_cropper('aspectRatio', 1.7777777777777777)">16:9</v-btn>
+                    <v-btn outline @click.prevent="set_cropper('aspectRatio', 1.3333333333333333)">4:3</v-btn>
+                    <v-btn outline @click.prevent="set_cropper('aspectRatio', 1)">1:1</v-btn>
+                    <v-btn outline @click.prevent="set_cropper('aspectRatio', NaN)"><i class="fa fa-hand-paper-o"></i></v-btn>
+                    <v-btn outline @click.prevent="set_cropper('clear')"><i class="fa fa-remove"></i></v-btn>
+                </v-btn-toggle>
+                <v-btn-toggle>
+                    <v-btn outline color="primary" @click.prevent="set_cropper('rotate', -45)"><i class="fa fa-rotate-left"></i></v-btn>
+                    <v-btn outline color="primary" @click.prevent="set_cropper('rotate', 45)"><i class="fa fa-rotate-right"></i></v-btn>
+                    <v-btn outline color="primary" @click.prevent="set_cropper('scaleX')"><i class="fa fa-arrows-h"></i></v-btn>
+                    <v-btn outline color="primary" @click.prevent="set_cropper('scaleY')"><i class="fa fa-arrows-v"></i></v-btn>
+                </v-btn-toggle>
+            </div>
+            <div class="text-xs-center mt-1">
+                <v-btn color="primary" @click.prevent="editSave"><v-icon dark>done</v-icon> 保存</v-btn>
+                <v-btn @click.prevent="$refs.upload.clear"><v-icon dark>clear</v-icon> 取消</v-btn>
+            </div>
+        </div>
+        <v-dialog v-model="resource_show" max-width="1000px" lazy>
+            <v-card>
+                <v-card-title>
+                    <div class="w9">
+                        <div class="title">
+                            <div>资源管理</div>
+                        </div>
+                        <div class="f14 text-muted"></div>
+                    </div>
+                    <v-spacer></v-spacer>
+                    <i class="fa fa-close f18 text-muted" @click="resource_show = false"></i>
+                </v-card-title>
+                <v-divider></v-divider>
+                <com_resource v-on:do_insert="get_resource_url"></com_resource>
+            </v-card>
+        </v-dialog>
+    </div>
+</template>
+
+<script>
+    Vue.component('com_upload_file', {
+        props: {
+            label: {type: String, default: ''},
+            value: {type: String, default: ''},
+            config: {type: Object, default: function () {return {};}},
+            data: {type: Object, default: function () {return {};}},
+            type: {type: String, default: 'all'}
+        },
+        data: function() {
+            return {
+                resource_show:false,
+                name: 'upfile_' + randomString(8),
+                name_backup: '',
+                options: {
+                    editable: false,
+                    size: parseInt(GV.UPLOAD_MAX_SIZE),
+                    aspectRatio: 1
+                },
+                action: GV.UPLOAD_TYPE == 'qiniu' ? GV.QINIU_UPLOAD_SERVER : GV.LOCAL_UPLOAD_URL,
+                post_data: {},
+                file_url: '',
+                accept: GV.accept_list[ this.type ],
+
+
+                files: [],
+                upload_type: GV.UPLOAD_TYPE,
+                status: 0,  // 0 不可以上传，1可以上传
+                token: '',  //七牛token
+
+                edit: false,
+                cropper: false,
+                temp_data: {
+                    scaleX: 1,
+                    scaleY: 1,
+                    rotate: 0
+                }
+            }
+        },
+        created: function () {
+            var _this = this;
+            if ( _this.config.editable ){   //如果开启cropper，则必须是图片
+                _this.accept = GV.accept_list.image;
+            }
+            if ( this.upload_type == 'qiniu' ){
+                _this.post_data = Object.assign( {}, _this.data );
+                api.send('get_qiniu_token', '', function ( res ) {
+                    _this.token = res;
+                    _this.status = 1;
+                    api.tips('已获取七牛token，可以上传了', 'cyan');
+                }, null, { loading_text: '获取七牛token…', loading_color: 'cyan'} );
+            }else{
+                _this.post_data = Object.assign( {  fields_name: this.name }, _this.data );
+                _this.status = 1;
+            }
+            _this.file_url = this.value;
+            _this.options = Object.assign( {}, this.options, this.config );
+        },
+        mounted: function () {
+        },
+        watch: {
+            edit: function ( value ) {
+                var _this = this;
+                if (value) {
+                    this.$nextTick(function () {
+                        if (!this.$refs.editImage) {
+                            return
+                        }
+                        var cropper = new Cropper(this.$refs.editImage, {
+                            aspectRatio: _this.options.aspectRatio,
+                            viewMode: 1
+                        });
+                        this.cropper = cropper
+                    })
+                } else {
+                    if (this.cropper) {
+                        this.cropper.destroy();
+                        this.cropper = false
+                    }
+                }
+            },
+            file_url: function ( val ) {
+                this.$emit('input', val)
+            },
+            value: function ( val ) {
+                if ( val != this.file_url ){
+                    this.file_url = val;
+                }
+            }
+        },
+        methods: {
+            get_resource_url: function(url){
+                var _this = this;
+               _this.file_url = url;
+               _this.resource_show = false;
+            },
+            make_random_name: function ( file_name ) {
+                var _name = 'u/' + getTime(7) + '/' + randomString(20),
+                    _ext = '.jpg';
+                if ( file_name ){
+                    var _arr;
+                    _arr = file_name.split('.');
+                    if ( _arr.length ){
+                        _ext = '.' + _arr[ _arr.length - 1 ];
+                    }
+                }
+                _name += _ext;
+                return _name;
+            },
+            priview: function ( ) {
+                if ( !this.file_url ){
+                   return false;
+                }
+                file_preview( this.file_url );
+            },
+            set_cropper: function ( action, opt ) {
+                var _this = this;
+                if (this.cropper && action) {
+                    switch (action){
+                        case 'aspectRatio':
+                            this.cropper.setAspectRatio(opt);
+                            break;
+                        case 'rotate':
+                            _this.temp_data.rotate = _this.temp_data.rotate + parseInt(opt);
+                            this.cropper.rotateTo(_this.temp_data.rotate);
+                            break;
+                        case 'scaleX':
+                            _this.temp_data.scaleX = _this.temp_data.scaleX * -1;
+                            this.cropper.scale(-1, _this.temp_data.scaleX );
+                            break;
+                        case 'scaleY':
+                            _this.temp_data.scaleY = _this.temp_data.scaleY * -1;
+                            this.cropper.scale(1, _this.temp_data.scaleY);
+                            break;
+                        case 'clear':
+                            this.cropper.clear();
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            },
+            editSave: function () {
+                this.edit = false;
+                var oldFile = this.files[0];
+                var binStr = atob(this.cropper.getCroppedCanvas().toDataURL(oldFile.type).split(',')[1]);
+                var arr = new Uint8Array(binStr.length);
+                for (var i = 0; i < binStr.length; i++) {
+                    arr[i] = binStr.charCodeAt(i)
+                }
+                var file = new File([arr], oldFile.name, { type: oldFile.type });
+
+                if ( this.upload_type == 'qiniu' ){
+                    var _post_data = Object.assign( { token: this.token, key: this.make_random_name( file.name ) }, file.data );
+                    this.name_backup = this.name;
+                    this.name = 'file';
+                    this.$refs.upload.update(oldFile.id, {
+                        file: file,
+                        type: file.type,
+                        size: file.size,
+                        data: _post_data,
+                        active: true
+                    });
+                }else{
+                    this.$refs.upload.update(oldFile.id, {
+                        file: file,
+                        type: file.type,
+                        size: file.size,
+                        active: true
+                    });
+                }
+                api.loading('上传中…', 'warning');
+            },
+            inputFile: function(newFile, oldFile, prevent) {
+                if (newFile && !oldFile) {
+                    if ( this.options.editable ){
+                        this.$nextTick(function () {
+                            this.edit = true
+                        })
+                    }else{
+                        // 自动上传
+                        if (Boolean(newFile) !== Boolean(oldFile) || oldFile.error !== newFile.error) {
+                            if (!this.$refs.upload.active) {
+                                api.loading('上传中…', 'warning');
+                                if ( this.upload_type == 'qiniu' ){
+                                    var _post_data = Object.assign( { token: this.token, key: this.make_random_name( newFile.name ) }, newFile.data );
+                                    this.name_backup = this.name;
+                                    this.name = 'file';
+                                    this.$refs.upload.update(newFile.id, {
+                                        data: _post_data,
+                                        active: true
+                                    });
+                                }else{
+                                    this.$refs.upload.update(newFile.id, {
+                                        active: true
+                                    });
+                                }
+                                return ;
+                            }
+                        }
+                    }
+                }
+                if (!newFile && oldFile && this.options.editable) {
+                    this.edit = false
+                }
+
+                if (newFile && oldFile && !newFile.active && oldFile.active) {
+                    if ( this.upload_type == 'qiniu' ){
+                        this.name = this.name_backup;
+                        this.name_backup = '';
+                        this.file_url = GV.QINIU_DOMAIN + newFile.response.key;
+                    }else{
+                        if ( newFile.response.code == 0 ){
+                            api.tips('上传成功', 'success');
+                            this.file_url = newFile.response.data;
+                        }else{
+                            api.tips('上传失败：' + newFile.response.msg + newFile.response.code, 'red darken-3');
+                        }
+                    }
+                    api.loading_close();
+                    this.$refs.upload.clear();
+                }
+            },
+            inputFilter: function(newFile, oldFile, prevent) {
+                if ( this.status == 0 ){
+                    api.tips('上传token生成中，请稍后再试', 'warning');
+                    return prevent()
+                }
+                if (newFile && !oldFile) {
+                    // 过滤 php html js 文件
+                    if (/\.(php5?|html?|jsx?)$/i.test(newFile.name)) {
+                        api.tips('文件格式不允许上传', 'warning');
+                        return prevent()
+                    }
+                }
+                if (newFile && (!oldFile || newFile.file !== oldFile.file)) {
+                    //上传组件的size判断好像无效，手动判断一次
+                    if ( newFile && newFile.size > 0 && this.options.size > 0 && newFile.size > this.options.size ){
+                        api.tips('上传失败：文件应小于' + format_size(this.options.size), 'red darken-3');
+                        return prevent()
+                    }
+                    newFile.url = '';
+                    var URL = window.URL || window.webkitURL;
+                    if (URL && URL.createObjectURL) {
+                        newFile.url = URL.createObjectURL(newFile.file)
+                    }
+                }
+            }
+        },
+        template: '#com_upload_file'
+    })
+</script>
+
+
+<template id="com_ueditor">
+    <div style="width: 100%; overflow-y: scroll;">
+        <template v-if=" label ">
+            <v-container class="pa-0" fluid>
+                <v-layout align-end justify-space-between row fill-height>
+                    <span class="text-muted">{{ label }}</span>
+                    <slot name="right"></slot>
+                </v-layout>
+            </v-container>
+            <v-divider class="my-2"></v-divider>
+        </template>
+        <script :id="id" :name="name" type="text/plain"></script>
+    </div>
+</template>
+<script>
+    Vue.component('com_ueditor', {
+        props: {
+            value: {type: String, default: '' },
+            config: {type: Object, default: function () {return {}}},
+            name: {type: String, default: ''},
+            label: {type: String, default: ''}
+        },
+        data: function () {
+            return {
+                id: 'ueditor_' + randomString(8),
+                editor: null,
+                defaultConfig: {
+                    serverUrl :GV.UPLOAD_UEDITOR_URL,
+                    autoHeightEnabled: true,
+                    scaleEnabled: true,
+                    allowDivTransToP: false,
+                    initialFrameHeight: 350,
+                    initialFrameWidth: '100%',
+                    enableAutoSave: false,
+                    toolbars: [[
+                        'source', '|',
+                        'bold', 'italic', 'underline', 'strikethrough', 'removeformat', 'autotypeset', '|', 'forecolor', 'backcolor', 'lineheight', 'fontsize','|' ,'link', 'unlink', '|' ,'indent', 'justifyleft', 'justifycenter', 'justifyright', 'justifyjustify', '|', 'simpleupload', 'insertimage', 'emotion', 'scrawl', 'attachment', 'spechars'
+                    ]]
+                }
+            };
+        },
+        computed: {
+            mixedConfig: function () {
+                return Object.assign({}, this.defaultConfig, this.config)
+            }
+        },
+        mounted: function () {
+            this.init();
+        },
+        beforeDestroy: function() {
+            this.editor.destroy()
+        },
+        watch: {
+            value: function ( val ) {
+                if ( !this.editor || this.editor.getContent() == val ) return false;
+                this.editor.setContent( val );
+            }
+        },
+        methods: {
+            init: function () {
+                var _this = this;
+                UE.registerUI('dialog', function (editor, uiName) {
+                    var btn = new UE.ui.Button({
+                        name   : 'xiumi-connect',
+                        title  : '秀米微信编辑器',
+                        cssRules: 'background-position: -40px -40px;',
+                        onclick: function () {
+                            var dialog = new UE.ui.Dialog({
+                                iframeUrl: GV.JS_ROOT + '/ueditor/xiumi-ue-dialog-v5.html',
+                                editor   : editor,
+                                name     : 'xiumi-connect',
+                                title    : "秀米微信编辑器",
+                                cssRules : "width: " + (window.innerWidth - 60) + "px;" + "height: " + (window.innerHeight - 60) + "px;",
+                            });
+                            dialog.render();
+                            dialog.open();
+                        }
+                    });
+                    return btn;
+                });
+                _this.editor = UE.getEditor( _this.id , _this.mixedConfig);
+                _this.editor.addListener('ready', function() {
+                    _this.editor.setContent(_this.value || '');
+                    _this.$emit('ready', _this.editor);
+                    _this.editor.addListener('contentChange', function() {
+                        _this.$emit('input', _this.editor.getContent())
+                    })
+                });
+            }
+        },
+        template: '#com_ueditor'
+    });
+</script>
+
+
+<template id="com_qiniu">
+    <div class="w10">
+        <v-text-field v-model="file_url" :label="label" @click:append-outer=" $preview(file_url) " :append-outer-icon=" 'image_search' " placeholder="输入路径 或 选择文件…">
+            <label slot="append" :for="name"><i class="fa fa-folder-open-o f18" ></i></label>
+        </v-text-field>
+        <div v-if="uploading" class="flex_center mt-1">
+            <v-progress-circular :size="50" :width="6" :value="upload_total.percent" color="cyan" class="f12">{{ parseInt(upload_total.percent) }}%</v-progress-circular>
+            <div class="text-muted f12 ml-2">
+                正在上传：<span class="mr-2">{{fileName}}</span>{{ upload_total.loaded | file_size }} / {{ upload_total.size | file_size }}
+            </div>
+        </div>
+        <span class="file-uploads file-uploads-html5 file-uploads-drop"><input type="file" :name="name" :id="name" @change="uploadFile" /></span>
+    </div>
+</template>
+
+<script>
+    Vue.component('com_qiniu', {
+        props: [ 'value', 'label'],
+        data: function () {
+            return {
+                uploading: false,
+                qiniuUrl: GV.QINIU_DOMAIN,
+                name: 'upfile_' + randomString(8),
+                file_url: '',
+                fileName: '',
+                upload_total: {
+                    loaded: 0,
+                    size: 0,
+                    percent: 0
+                }
+            }
+        },
+        watch: {
+            file_url: function ( val ) {
+                this.$emit('input', val)
+            },
+            value: function ( val ) {
+                if ( val != this.file_url ){
+                    this.file_url = val;
+                }
+            }
+        },
+        created: function () {
+            var _this = this;
+            _this.file_url = _this.value;
+        },
+        methods: {
+            uploadFile($event) {
+                var _this = this,
+                    file = $event.target.files[0];
+                if ( _this.uploading ){
+                    return false;
+                }
+                // 限制上传文件的大小为200M
+                if (file.size > GV.UPLOAD_MAX_SIZE * 1024) {
+                    const cur_size = Math.floor(file.size * 100 / 1024 / 1024) / 100;
+                    api.tips('上传文件大小不得超过'+GV.UPLOAD_MAX_SIZE+'+M 当前文件' + cur_size + 'M ', 'warning');
+                    return false;
+                }
+
+                api.send('get_qiniu_token', '', function (res) {
+                    var fileName = file.name,
+                        suffix = fileName.substring(fileName.lastIndexOf('.')),
+                        key = randomString(20) + suffix,
+                        token = res,
+                        observer = {
+                            next: function (response) {
+                                _this.upload_total = response.total;
+                            },
+                            error: function (err) {
+                                api.tips('上传失败' + err.message, 'error');
+                                console.log(err)
+                            },
+                            complete: function (response) {
+                                var report = {
+                                    key: response.key,
+                                    url: GV.QINIU_DOMAIN + response.key,
+                                    response: response,
+                                    file: file
+                                };
+                                _this.$emit('uploaded', report);
+                                _this.file_url = report.url;
+                                _this.upload_total = {
+                                    loaded: 0,
+                                    size: 0,
+                                    percent: 0
+                                };
+                                _this.uploading = false;
+                            }
+                        },
+                        putExtra = {
+                            fname: '',
+                            params: {},
+                            mimeType: null
+                        },
+                        config = {},
+                        observable = qiniu.upload(file, key, token, putExtra, config);
+
+                    _this.fileName = fileName;
+                    _this.uploading = true;
+                    observable.subscribe(observer);
+
+                }, null, {loading_text: '获取七牛token…', loading_color: 'cyan'});
+            }
+        },
+        template: '#com_qiniu'
+    })
+</script>
+
+<template id="com_tags_manage_template">
+    <div class="w10" v-if="!deleted">
+        <div class="pa-2 grey lighten-2 flex_lr flex_center">
+            <div>{{ group }}</div>
+            <div>
+                <v-icon @click="create_tag" class="mr-1">add</v-icon>
+                <v-icon @click="delete_group" v-if="can_delete">delete</v-icon>
+            </div>
+        </div>
+        <draggable tag="div" :list="data_list" class="pa-2 grey lighten-4" handle=".drag_handle" @end=" drag_end ">
+            <div v-for=" item in data_list " class="bg-white pa-1 flex_center my-2">
+                <div class="text-center w1 drag_handle">
+                    <v-icon>drag_indicator</v-icon>
+                </div>
+                <div @click="edit_tag( item )">
+                    <span class="text-primary hand">{{ item.title }}</span>
+                </div>
+            </div>
+        </draggable>
+        <v-dialog v-model="form_opened_update" max-width="500px" lazy>
+            <v-card>
+                <v-card-title><div class="title">编辑tag值 - 分组：[{{form_fields_update.group}}]</div></v-card-title>
+                <v-divider></v-divider>
+                <v-card-text>
+                    <div class="mb-2">调用ID：<span class="text-primary">{{ form_fields_update.id }}</span></div>
+                    <v-form ref="ref_form_update" lazy-validation>
+                        <v-text-field v-model="form_fields_update.title" :rules="[$com_rules.required]" label="tag值（title）"></v-text-field>
+                        <v-textarea v-model="form_fields_update.remark" label="分组描述-上限200字（remark）"></v-textarea>
+                        <v-text-field v-model="form_fields_update.style" label="tag扩展-样式（style）" hint="一般用户status标签颜色区分"></v-text-field>
+                        <p class="text-muted f12">参考：https://vuetifyjs.com/zh-Hans/framework/colors</p>
+                        <v-text-field v-model="form_fields_update.color" label="tag扩展-颜色（color）" hint="扩展颜色，也可视为文本扩展调用"></v-text-field>
+                        <v-text-field v-model="form_fields_update.link" label="tag扩展-链接（link）"></v-text-field>
+                        <com_upload_file type="image" label="tag扩展-图片（pic）" v-model=" form_fields_update.pic " :config="{ editable: true }" :data="{group_id: 5}"></com_upload_file>
+                    </v-form>
+                </v-card-text>
+                <v-card-actions>
+                    <v-btn color="red darken-1" flat @click.native="delete_selected(form_fields_update)">删除</v-btn>
+                    <v-spacer></v-spacer>
+                    <v-btn color="blue darken-1" flat @click.native="form_submit_update">提交保存</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+    </div>
+</template>
+
+<script>
+    Vue.component('com_tags_manage', {
+        props: {
+            type: {
+                type: String,
+                default: 'text'
+            },
+            group: {
+                type: String,
+                required: true,
+                default: ''
+            },
+            can_delete: {
+                type: Boolean,
+                default: true
+            }
+        },
+        data: function () {
+            return {
+                deleted: false,
+                data_list: [],
+                form_fields_create: {
+                    title: '',
+                    remark: '',
+                    style: '',
+                    color: '',
+                    link: '',
+                    pic: '',
+                },
+                form_opened_update: false,
+                form_fields_update: {}
+            };
+        },
+        watch: {
+            data_list: function ( val ) {
+                this.deleted = val.length == 0;
+            }
+        },
+        mounted: function () {
+            this.load_data();
+        },
+        methods: {
+            load_data: function () {
+                var _this = this;
+                api.send('tags_list', _this.group , function (res) {
+                    _this.data_list = res;
+                }, null, { loading_show: false });
+            },
+            create_tag: function (item) {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form_fields_create);
+                _fields.group = _this.group;
+                _this.form_fields_update = _fields;
+                _this.form_opened_update = true;
+            },
+            edit_tag: function ( item ) {
+                var _this = this;
+                _this.form_fields_update = Object.assign({}, item);
+                _this.form_opened_update = true;
+            },
+            form_submit_update: function () {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form_fields_update);
+                _fields.group = _this.group;    //锁定group
+                if (this.$refs.ref_form_update.validate()) {
+                    api.send( _fields.id ? 'tags_update' : 'tags_create' , _fields, function ( res ) {
+                        _this.form_opened_update = false;
+                        _this.load_data();
+                        api.tips( _fields.id ? '编辑' : '创建' + '成功', 'success');
+                    } );
+                }
+            },
+            delete_selected: function ( item ) {
+                var _this = this;
+                api.confirm('确认删除吗？', '如该tag有关联，则无法恢复，如分组没有配置项，则分组将被移除', function () {
+                    api.send('tags_delete', { id: item.id }, function ( res ) {
+                        _this.load_data();
+                        _this.form_opened_update = false;
+                        api.tips('删除成功', 'success');
+                    } );
+                });
+            },
+            delete_group: function () {
+                var _this = this;
+                api.confirm('确认删除吗？', '将删除整个配置组，属于危险操作，请确认', function () {
+                    api.send('tags_group_delete', { group: _this.group }, function ( res ) {
+                        _this.deleted = true;
+                        api.tips('已删除分组', 'success');
+                    } );
+                });
+            },
+            drag_end: function ( ) {
+                var _this = this,
+                    _fields = _this.data_list;
+                for( var i = 0; i < _fields.length; i++){
+                    _fields[i].sort = i;
+                    console.log( _fields[i].title, _fields[i].sort );
+                }
+                api.send('tags_sort', _fields, function ( res ) {
+                    _this.load_data();
+                    api.tips('已调整排序', 'success');
+                } );
+            }
+        },
+        template: '#com_tags_manage_template'
+    });
+</script>
+
+
+
+<template id="com_resource">
+    <div>
+        <v-container>
+            <div class="ma-1">
+                <v-layout row class="text-xs-center">
+                    <v-flex xs2 class="pa-3">
+                        分组\类型
+                    </v-flex>
+                    <v-flex xs9>
+                        <div v-for="item in file_type_list" :class="item.selected?'pa-3 hand text-success':'pa-3 hand'"
+                            :key="item.id" @click="select_file_type(item)">
+                            {{item.cn}}
+                        </div>
+                    </v-flex>
+                    <v-flex xs1>
+                        <v-btn color="primary" dark @click="do_insert"><i class="fa fa-plus mr-1"></i>
+                            插入</v-btn>
+                    </v-flex>
+                </v-layout>
+                <v-divider></v-divider>
+                <v-layout row class="mt-3 ">
+                    <v-flex xs2>
+                        <div>
+                            <div :class="group_all_style? 'pa-3 text-xs-center hand text-success':'pa-3 text-xs-center hand ' "
+                                @click="select_group('all')">全部分组</div>
+                            <div v-for="item in file_group_list" :key="item.id" :class="item.selected? 'pa-3 text-xs-center hand text-success':'pa-3 text-xs-center hand ' "
+                                @click="select_group(item)">{{item.group_name}}</div>
+                        </div>
+                    </v-flex>
+                    <v-flex xs10>
+                        <v-layout row wrap>
+                            <v-flex xs3 class="pa-2" v-for="item in data_list" :key="item.id" @click.stop="check_selected(item)">
+                                <div class="img_border">
+                                    <div class="file_mask text-xs-center" v-model="selected"  v-show="item.selected">
+                                        <v-icon class="mr-2 mask_icon" color="green">check_circle</v-icon>
+                                    </div>
+                                    <div style="height:150px;">
+                                        <img :src="item.url || '/z/web_vue/img/pic_default.png' " class="file_img" alt="图片不存在"
+                                            :title="item.filename">
+                                    </div>
+                                    <div class="mt-1 ml-2">{{item.filename}}</div>
+                                    <div class="my-1 ml-2 text-muted">{{item.time | get_time(2)}}</div>
+                                </div>
+                            </v-flex>
+                        </v-layout>
+                    </v-flex>
+                </v-layout>
+            </div>
+            <div class="bg-white py-3 text-xs-right">
+                    <div class="d-inlineblock f12 text-muted">总 {{this.total_count}} 条</div>
+                <v-pagination :disabled="loading" v-model="page" @input=" load_data() " :length="total_pages" total-visible="9"></v-pagination>
+            </div>
+        </v-container>
+    </div>
+</template>
+
+
+<script>
+
+    Vue.component('com_resource', {
+        props: [ 'value', 'label'],
+        data: function () {
+            return {
+                //翻页的配置，必须写
+                pagination: {
+                    rowsPerPage: -1,     //显示全部，推荐-1
+                    sortBy: null         //默认排序字段，推荐设置，descending = true && sortBy = 'id' 即 id desc
+                },
+
+                //分页的配置，可自定义
+                page_size: 8,
+                page: 1,
+                total_count: 0,
+                data_list: [],
+                loading: false,
+
+                selected:[],
+                send_url:'',
+                search_group: {},
+                search_file: {},
+                group_all_style: true,
+
+                file_type_list: GV.accept_list,
+
+                file_group_list: []
+
+            }
+        },
+        mounted: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        computed: {
+            total_pages: function () {  //分页的总页数获取，不用动
+                if (this.page_size == null || this.total_count == null) return 0;
+                return Math.ceil(this.total_count / this.page_size)
+            }
+        },
+        methods: {
+
+            //页面初始化，推荐统一编写，比较清晰
+            page_init: function () {
+                var _this = this;
+                _this.load_data();
+                _this.get_file_group_list();
+                for (var key in _this.file_type_list) {
+                    if (key == 'all') {
+                        _this.file_type_list[key].selected = true;
+                    }
+                }
+            },
+
+            load_data: function (reload) {
+                var _this = this,
+                    _fields = {
+                        page: reload ? 1 : _this.page,
+                        page_size: _this.page_size,
+                        search: []
+                    };
+
+                _fields.search.push(_this.search_file);
+                _fields.search.push(_this.search_group);
+
+                if (reload) _this.page = 1;
+                if (_this.loading) return false;
+                _this.loading = true;
+
+                api.send('get_files_list', _fields, function (res) {
+                    _this.total_count = res.total_count;
+                    _this.data_list = res.data_list || [];
+                    _this.loading = false;
+                });
+            },
+
+            get_file_group_list: function () {
+                var _this = this;
+                api.send('get_file_group_list', '', function (res) {
+                    _this.file_group_list = res || [];
+                }, null, { loading_show: false });
+            },
+            select_file_type: function (item) {
+                var _this = this;
+                for (var key in _this.file_type_list) {
+                    _this.file_type_list[key].selected = false;  
+                }
+                if (item.extensions == '*') {
+                    item.selected = true;
+                    _this.search_file = {}
+                } else {
+                    item.selected = true;
+                    _this.search_file = {
+                        field: 'ext',
+                        type: 'multiple',
+                        value: item.extensions
+                    }
+                }
+                _this.load_data(true);
+            },
+            select_group: function (item) {
+                var _this = this;
+                _this.file_group_list.map(function (f) {
+                    f.selected = false;
+                });
+                if (item == 'all') {
+                    _this.group_all_style = true;
+                    _this.search_group = {};
+                } else {
+                    _this.group_all_style = false;
+                    item.selected = true;
+                    _this.search_group = {
+                        field: 'group_id',
+                        type: 'select',
+                        value: item.id
+                    }
+                }
+                _this.load_data(true);
+            },
+            check_selected: function (item) {
+                var _this = this;
+                if(item.selected == true){
+                    item.selected = false;
+                    _this.selected=[];
+                    _this.send_url = '';
+                }else{
+                    _this.selected=[];
+                    _this.data_list.map(function (d) {
+                        d.selected = false;
+                    })
+                    item.selected = true;
+                    _this.selected.push(item.id);
+                    _this.send_url = item.url;
+                }
+            },
+            array_remove: function (list, val) {
+                var index = list.indexOf(val);
+                if (index > -1) {
+                    list.splice(index, 1);
+                }
+            },
+            do_insert: function(){
+                var _this = this;
+                _this.$emit('do_insert', _this.send_url);
+            }
+        },
+
+        template: '#com_resource'
+    })
+
+</script>
+
+<script>
+    Vue.component('com_echarts', {
+        props: [ 'options', 'action'],
+        data: function () {
+            return {
+                id: randomString(8),
+                myChart: null
+            }
+        },
+        mounted: function () {
+            var _this = this;
+            _this.myChart = echarts.init(document.getElementById( _this.id ));
+            _this.myChart.setOption(_this.options);
+        },
+        watch: {
+            options: {
+                handler: function (val) {
+                    this.myChart.setOption( val );
+                },
+                deep: true
+            },
+        },
+        template: '<div :id="id"></div>'
+    })
+</script>

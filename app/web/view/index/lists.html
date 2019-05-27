@@ -1,0 +1,133 @@
+<style>
+    .menu_left {
+        border-left: 1px solid #e7e7e7;
+        border-right: 1px solid #e7e7e7;
+    }
+
+    .menu_left_title {
+        font-size: 18px;
+        background: #00a0e9;
+        color: #fff;
+        padding: 0.6em;
+    }
+
+    .menu_left_sub_title {
+        border-bottom: 1px solid #e7e7e7;
+    }
+
+    .menu_left_sub_title a {
+        display: block;
+        padding: 0.8em 0.8em;
+        font-size: 16px;
+        color: #666;
+    }
+
+    .menu_left_sub_title a:not(:last-child) {
+        border-bottom: 1px solid #e7e7e7;
+    }
+
+    .menu_left_sub_title a.active {
+        color: #00a0e9;
+    }
+
+    .menu_left_s_sub_title {
+        border-bottom: 1px solid #e7e7e7;
+    }
+
+    .menu_left_s_sub_title a {
+        display: block;
+        padding: 0.5em 0.8em;
+        font-size: 15px;
+        color: #666;
+    }
+
+    .menu_left_s_sub_title a:not(:last-child) {
+        border-bottom: 1px solid #e7e7e7;
+    }
+
+    .menu_left_s_sub_title a.active {
+        color: #00a0e9;
+    }
+</style>
+<template id="app_inside">
+    <div class="fully ">
+        <el-row :gutter="20">
+            <el-col :span="7" class="mt-3">
+                <div class="menu_left" style="background:#fff; ">
+                    <div v-for="item in menu_list">
+                        <div class="menu_left_title pl-3">{{item.title}}</div>
+                        <template v-if="item.child">
+                            <div class="" v-for="sub_item in item.child">
+                                <div class="menu_left_sub_title ">
+                                    <a :href="$url('index/lists', {classid: sub_item.id} )" :class=" {$now_class['id'] }  == sub_item.id ? 'active' : ''">{{sub_item.title}}</a>
+                                </div>
+                                <template v-if="sub_item.child">
+                                    <div class="menu_left_s_sub_title pl-3" v-for="s_sub_item in sub_item.child">
+                                        <a :href="$url('index/lists', {classid: s_sub_item.id} )" :class=" {$now_class['id'] }  == s_sub_item.id ? 'active' : ''">·{{s_sub_item.title}}</a>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </el-col>
+            <el-col :span="17" class="mt-3 ">
+                <div style="min-height: 500px;" class='bg-white px-3'>
+                    <div class="list_position border_bottom py-3">
+                            当前位置：{$now_class.position}
+                        </div>
+                        {if condition="$now_class['content'] neq false"}
+                            <div class="list_container list_text">
+                                {:htmlspecialchars_decode($now_class['content'])}
+                            </div>
+                        {/if}
+        
+                        {if condition="count($arcs) > 0"}
+                            <div class="list_bordered list_article">
+                                {foreach name="arcs" item="vo"}
+                                    <el-row  class=" mt-3">
+                                        <a href="{:url('show',array('arcid'=>$vo['id']))}">
+                                            <el-col :span="7">
+                                                <img src="{$vo.litpic?:'/z/web/img/pic_default.png'}" alt="" class="w10" style="height:125px">
+                                            </el-col>
+                                            <el-col :span="17">
+                                                <div class="ml-3 ">
+                                                    <div class="f16 text-default text-overflow mb-3">{$vo.title}</div>
+                                                    <div class="text-muted f14 text-overflow-3 mb-2">{$vo.description}</div>
+                                                    <div class="text-muted f12 text-overflow-3">{$vo.utime|date='Y-m-d',###} <i class="fa fa-eye ml-3 mr-2 "></i>{$vo.click}</div>
+                                                </div>
+                                            </el-col>
+                                        </a>
+                                    </el-row>
+                                {/foreach}
+                            </div>
+                            <div class="empty_tips hide f20 mt-3">暂无信息…</div>
+                            <div class="text-right">{$arcs->render()}</div>
+                        {/if}
+                </div>
+            </el-col>
+        </el-row>
+    </div>
+</template>
+
+<script>
+    var menu_list = {$menu_list };
+    var app_inside = {
+        props: ['now_class'],
+        data: function () {
+            return {
+                page_loaded: false,
+                menu_list: []
+            }
+        },
+        created: function () {
+            var _this = this;
+            _this.menu_list = listToTree('id', 'pid', menu_list);
+        },
+        
+        methods: {
+        },
+        template: '#app_inside'
+    };
+
+</script>

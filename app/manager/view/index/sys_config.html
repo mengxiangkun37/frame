@@ -1,0 +1,532 @@
+
+<style type="text/css">
+</style>
+
+<template id="app_inside">
+    <div>
+        <!--页面标题栏-->
+        <v-toolbar flat color="white">
+            <v-toolbar-title>系统配置</v-toolbar-title>
+            <v-divider class="mx-2" inset vertical></v-divider>
+            <v-menu :close-on-content-click="false" offset-y slide-x max-width="500">
+                <v-btn slot="activator" color="warning" dark><v-icon class="mr-2">help_outline</v-icon> 帮助</v-btn>
+                <div class="pa-2 bg-white">
+                    <ol>
+                        <li>使用 SC('code') 的快捷方法可以快速获取值。取值顺序：TP的C() / config()，再取该页里的配置，可代替C方法</li>
+                        <li>修改后，点击右上角提交修改才会生效</li>
+                    </ol>
+                </div>
+            </v-menu>
+            <v-spacer></v-spacer>
+            <v-btn @click=" opened_group_manage = true "><i class="fa fa-list mr-1"></i> 分组管理</v-btn>
+            <v-btn @click="open_form_create()" color="primary" dark><i class="fa fa-plus mr-1"></i> 添加新配置</v-btn>
+            <v-btn @click="submit_save()" color="primary" dark>
+                <i class="fa fa-save mr-1"></i>
+                <span>保存配置值的修改</span>
+                <span v-if="unsaved.length" class="ml-1">({{unsaved.length}})</span>
+            </v-btn>
+
+            <v-dialog v-model="opened_group_manage" max-width="500px" lazy>
+                <v-card>
+                    <v-card-title>
+                        <div>
+                            <div class="title">分组管理</div>
+                            <div class="f14 text-muted">点击表格即可编辑，排序按照序号小在前</div>
+                        </div>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text class="pa-0">
+                        <v-data-table hide-actions :headers="group_header" :pagination="{rowsPerPage:-1,sortBy:'sorts'}" :items="group_list">
+                            <template slot="items" slot-scope="props">
+                                <td>
+                                    <v-edit-dialog persistent large :return-value.sync="props.item.sorts" lazy @save="update_group( props.item )" cancel-text="取消" save-text="保存"> {{ props.item.sorts }}
+                                        <div slot="input" class="mt-3 f12 text-muted">修改分组排序</div>
+                                        <v-text-field slot="input" autofocus v-model="props.item.sorts" :rules="[$com_rules.required]" label="Edit" single-line></v-text-field>
+                                    </v-edit-dialog>
+                                </td>
+                                <td>
+                                    <v-edit-dialog persistent large :return-value.sync="props.item.title" lazy @save="update_group( props.item )" cancel-text="取消" save-text="保存"> {{ props.item.title }}
+                                        <div slot="input" class="mt-3 f12 text-muted">修改分组名称</div>
+                                        <v-text-field slot="input" autofocus v-model="props.item.title" :rules="[$com_rules.required]" label="Edit" single-line></v-text-field>
+                                    </v-edit-dialog>
+                                </td>
+                                <td class="text-xs-center">
+                                    <v-icon small @click.stop="delete_group(props.item)">delete</v-icon>
+                                </td>
+                            </template>
+                        </v-data-table>
+                    </v-card-text>
+
+                    <v-divider></v-divider>
+                    <v-card-text>
+                        <div class="f14">创建新分组</div>
+                        <v-form ref="ref_form_group_create" lazy-validation>
+                            <v-text-field v-model="form_group_create.title" :rules="[$com_rules.required]" label="新分组名称"></v-text-field>
+                            <v-text-field v-model="form_group_create.sorts" :rules="[$com_rules.required]" label="排序-序号小在前"></v-text-field>
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="blue darken-1" flat @click.native="submit_group_create()">提交创建</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+            <v-dialog v-model="form_opened_create" max-width="500px" lazy>
+                <v-card>
+                    <v-card-title>
+                        <div>
+                            <div class="title">添加新配置</div>
+                            <div class="f14 text-muted">需要注意添加格式，有格式错误可能会引起渲染错误，就需要去数据库修改了</div>
+                        </div>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text>
+                        <v-form ref="ref_form_create" lazy-validation>
+                            <v-text-field v-model="form_fields_create.code" :rules="[$com_rules.required]" label="调用标识"></v-text-field>
+                            <v-text-field v-model="form_fields_create.title" :rules="[$com_rules.required]" label="配置名称"></v-text-field>
+                            <v-select v-model="form_fields_create.group_id" :rules="[$com_rules.required]" :items="group_list" item-text="title" item-value="id" label="所属分组" attach></v-select>
+                            <v-select v-model="form_fields_create.type" :rules="[$com_rules.required]" :items="type_list" label="配置类型" attach></v-select>
+                            <v-textarea v-model="form_fields_create.options" v-if=" form_fields_create.type == 'select_multiple' || form_fields_create.type == 'select' || form_fields_create.type == 'radio' " label="配置格式" placeholder="冒号(:)与逗号(,)为间隔符"></v-textarea>
+                            <div class="text-muted f12 lh20" v-if=" form_fields_create.type == 'select_multiple' || form_fields_create.type == 'select' || form_fields_create.type == 'radio' ">{{get_type_hint(form_fields_create.type)}}</div>
+                            <v-text-field v-model="form_fields_create.val" label="初始值"></v-text-field>
+                            <v-text-field v-model="form_fields_create.tips" placeholder="选填，限200字，只会出现在配置列表中" label="提示"></v-text-field>
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="blue darken-1" flat @click.native="form_submit_create()">提交保存</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+            <v-dialog v-model="form_opened_update" max-width="500px" lazy>
+                <v-card>
+                    <v-card-title>
+                        <div>
+                            <div class="title">编辑配置</div>
+                            <div class="f14 text-muted">需要注意添加格式，有格式错误可能会引起渲染错误，就需要去数据库修改了</div>
+                        </div>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text>
+                        <v-form ref="ref_form_update" lazy-validation>
+                            <v-text-field v-model="form_fields_update.code" readonly label="调用标识-不可修改"></v-text-field>
+                            <v-text-field v-model="form_fields_update.title" :rules="[$com_rules.required]" label="配置名称"></v-text-field>
+                            <v-select v-model="form_fields_update.group_id" :rules="[$com_rules.required]" :items="group_list" item-text="title" item-value="id" label="所属分组" attach></v-select>
+                            <v-select v-model="form_fields_update.type" :rules="[$com_rules.required]" :items="type_list" label="配置类型" attach></v-select>
+                            <v-textarea v-model="form_fields_update.options" v-if=" form_fields_update.type == 'select_multiple' || form_fields_update.type == 'select' || form_fields_update.type == 'radio' " label="配置格式" placeholder="冒号(:)与逗号(,)为间隔符" :hint=" get_type_hint(form_fields_update.type) "></v-textarea>
+                            <v-text-field v-model="form_fields_update.val" label="配置值" hint="尽量在界面中操作值"></v-text-field>
+                            <v-text-field v-model="form_fields_update.tips" placeholder="选填，限200字，只会出现在配置列表中" label="提示"></v-text-field>
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="blue darken-1" flat @click.native="form_submit_update()">提交保存</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+        </v-toolbar>
+
+        <!--表格模板-->
+        <v-tabs v-model="active_tab" grow>
+            <v-tab v-for="g in group_list" :key="g.id" ripple>
+                {{ g.title }}
+            </v-tab>
+            <v-tab-item v-for="g in group_list" :key="g.id" class="mt-1">
+                <v-data-table v-model="selected" no-data-text="暂无数据" :headers="headers" :items=" g.child " :pagination.sync="pagination" hide-actions select-all>
+                    <template slot="items" slot-scope="props">
+                        <tr :active="props.selected">
+                            <td><v-checkbox v-model="props.selected" primary hide-details></v-checkbox></td>
+                            <td><span class="f16 text-primary">{{ props.item.code }}</span></td>
+                            <td class="text-xs-right">
+                                <span>{{ props.item.title }}</span> <span class="text-danger" v-if=" props.item.is_edited ">*</span>
+                                <div class="f12 text-muted">{{ props.item.tips }}</div>
+                            </td>
+                            <td>
+                                <template v-if=" props.item.type == 'text' ">
+                                    <v-text-field v-model="props.item.val" @change=" val_changed( props.item ) "></v-text-field>
+                                </template>
+                                <template v-if=" props.item.type == 'radio' ">
+                                    <v-radio-group v-model="props.item.val" row @change=" val_changed( props.item ) " class="mt-3">
+                                        <v-radio :label=" item.text " :value=" item.value " v-for=" item in format_options( props.item.options ) "></v-radio>
+                                    </v-radio-group>
+                                </template>
+                                <template v-if=" props.item.type == 'switch' ">
+                                    <v-switch v-model="props.item.val" color="info" @change=" val_changed( props.item ) " class="mt-3"></v-switch>
+                                </template>
+                                <template v-if=" props.item.type == 'textarea' ">
+                                    <v-textarea v-model="props.item.val" auto-grow rows="2" @change=" val_changed( props.item ) "></v-textarea>
+                                </template>
+                                <template v-if=" props.item.type == 'select_multiple' ">
+                                    <v-select :items=" format_options( props.item.options ) " v-model="props.item.val" :menu-props="{ maxHeight: '400' }" multiple @change=" val_changed( props.item ) "></v-select>
+                                </template>
+                                <template v-if=" props.item.type == 'select' ">
+                                    <v-select :items=" format_options( props.item.options ) " v-model="props.item.val" :menu-props="{ maxHeight: '400' }" @change=" val_changed( props.item ) "></v-select>
+                                </template>
+                                <template v-if=" props.item.type == 'upload_img' ">
+                                    <com_upload_file type="image" v-model=" props.item.val " :config="{ editable: true }" :data="{group_id: 5}" @input=" val_changed( props.item ) "></com_upload_file>
+                                </template>
+                                <template v-if=" props.item.type == 'upload_file' ">
+                                    <com_upload_file type="all" v-model=" props.item.val " :data="{group_id: 5}" @input=" val_changed( props.item ) "></com_upload_file>
+                                </template>
+                            </td>
+                            <td class="text-xs-center">
+                                <v-icon small class="mr-2" @click.stop="open_form_update(props.item)">edit</v-icon>
+                            </td>
+                        </tr>
+                    </template>
+                </v-data-table>
+
+            </v-tab-item>
+        </v-tabs>
+
+        <div class="bg-white py-2">
+            <v-menu top offset-y :disabled="selected.length == 0" max-height="300">
+                <v-btn slot="activator" :disabled="selected.length == 0">
+                    <i class="fa fa-long-arrow-right mr-1"></i>
+                    <span>批量移动</span>
+                    <span v-if=" selected.length " class="ml-1">({{selected.length}})</span>
+                </v-btn>
+                <v-list>
+                    <v-list-tile v-for="(item, index) in group_list" :key="index" @click=" batch_move( item ) ">
+                        <v-list-tile-title><i class="fa fa-long-arrow-right mr-1"></i>{{ item.title }}</v-list-tile-title>
+                    </v-list-tile>
+                </v-list>
+            </v-menu>
+            <v-btn color="error" :disabled="selected.length == 0" @click=" batch_delete() ">
+                <i class="fa fa-remove mr-1"></i>
+                <span>批量删除</span>
+                <span v-if=" selected.length " class="ml-1">({{selected.length}})</span>
+            </v-btn>
+        </div>
+    </div>
+</template>
+
+<script>
+    var app_inside = {
+        data: function () {
+            return {
+
+                active_tab: 0,
+                //表头，按字义理解，参考：https://vuetifyjs.com/zh-Hans/components/data-tables
+                headers: [
+                    { text: '调用标识(code)', value: 'code', width: '150px'},
+                    { text: '配置名称(* 已修改,待保存)', value: 'title', width: '20%', align: 'right' },
+                    { text: '配置值(修改后，需要提交才生效)', value: 'id', sortable: false },
+                    { text: '编辑配置', value: 'id', width: '50px', sortable: false, align: 'center' }
+                ],
+                group_header: [
+                    { text: '排序', value: 'sorts'},
+                    { text: '分组名称', value: 'title', sortable: false},
+                    { text: '操作', value: 'id', sortable: false}
+                ],
+                //多选的集合
+                selected: [],
+
+                //翻页的配置，必须写
+                pagination: {
+                    rowsPerPage: -1,     //显示全部，推荐-1
+                    sortBy: null         //默认排序字段，推荐设置
+                },
+
+                //其他业务数据
+                type_list: [
+                    { value: 'text', text: '单行文本框', remark: '常用配置，不用填写配置格式'},
+                    { value: 'radio', text: '单选框', remark: '格式如：local:本地,qiniu:七牛云存储，以逗号间隔项目，以value:label区分显示文本与值。也可以直接以逗号间隔值，如：local,qiniu，将自动以value做文本输出。'},
+                    { value: 'switch', text: '开关项', remark: '不用填写配置格式，值以 1/0 存储'},
+                    { value: 'textarea', text: '多行文本框', remark: '常用配置，不用填写配置格式'},
+                    { value: 'select', text: '下拉菜单-单选', remark: '格式如：local:本地,qiniu:七牛云存储，以逗号间隔项目，以value:label区分显示文本与值。也可以直接以逗号间隔值，如：local,qiniu，将自动以value做文本输出。'},
+                    { value: 'select_multiple', text: '下拉菜单-多选', remark: '格式如：local:本地,qiniu:七牛云存储，以逗号间隔项目，以value:label区分显示文本与值。也可以直接以逗号间隔值，如：local,qiniu，将自动以value做文本输出。多选的值为逗号(,)间隔'},
+                    { value: 'upload_img', text: '图片上传', remark: '限制1个文件。将会显示1个缩略图，点击即可上传+编辑'},
+                    { value: 'upload_file', text: '文件上传', remark: '限制1个文件。也可以输入文本路径，点击图标可上传'}
+                ],
+                config_list: [],
+                group_list: [],
+
+                //表单方面：可以放在一起，用字段控制，不过分开写比较好，比较清晰，而且有时新增和编辑的字段不同就需要更多字段控制，反而比较麻烦且不容易统一处理。
+                //新增的表单
+                form_opened_create: false,
+                form_fields_create: {
+                    code: '',
+                    title: '',
+                    val: '',
+                    type: '',
+                    options: '',
+                    tips: '',
+                    group_id: 0
+                },
+
+                //编辑的表单
+                form_opened_update: false,
+                form_fields_update: {},
+
+                //分组系列
+                form_group_create: {
+                    title: '',
+                    sorts: 0
+                },
+                opened_group_manage: false
+            }
+        },
+        mounted: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        watch: {
+            active_tab : function () {
+                this.selected = [];
+            }
+        },
+        computed: {
+            unsaved: function () {
+                var _this = this,
+                    _unsaved = [];
+
+                _this.group_list.map( function ( g ) {
+                    g.child.map( function ( c ) {
+                        if ( c.is_edited ){
+                            _unsaved.push( c );
+                        }
+                    });
+                });
+                return _unsaved;
+            }
+        },
+        methods: {
+            //页面初始化，推荐统一编写，比较清晰
+            page_init: function () {
+                var _this = this;
+                api.send('sys_config', '', function ( res ) {
+                    _this.config_list = res.config_list;
+
+                    res.group_list.map( function ( g ) {
+                        g.child = [];
+                        res.config_list.map( function ( c ) {
+                            if ( c.group_id == g.id ){
+                                if ( c.type == 'switch' ){
+                                    c.val = c.val == 1;
+                                }
+                                if ( c.type == 'select_multiple' ){
+                                    c.val = c.val.split(',');
+                                }
+                                g.child.push( Object.assign({ is_edited: false}, c ) );
+                            }
+                        });
+                    });
+
+                    _this.group_list = res.group_list;
+                    _this.selected = [];
+                } );
+            },
+
+            toggleAll: function ( list ) {
+                if (this.selected.length) this.selected = [];
+                else this.selected = list.slice()
+            },
+            changeSort: function (column) {
+                if (this.pagination.sortBy === column) {
+                    this.pagination.descending = !this.pagination.descending
+                } else {
+                    this.pagination.sortBy = column
+                    this.pagination.descending = false
+                }
+            },
+
+            //业务方法=======
+            format_options: function ( opts ) {
+                var _this = this,
+                    arr = [],
+                    arr2 = [];
+                if ( !opts ){
+                    return [];
+                }
+                arr = opts.split(',');
+                if ( opts.indexOf(':') > -1 ){
+                    arr.map( function( a ){
+                        var _temp = a.split(':');
+                        arr2.push( {text: _temp[1], value: _temp[0]} );
+                    });
+                }else{
+                    arr.map( function( a ){
+                        arr2.push( {text: a, value: a} );
+                    });
+                }
+                return arr2;
+            },
+
+            //如果变动了内容，加星号
+            val_changed: function ( item ) {
+                var _this = this,
+                    changed = false;
+                _this.config_list.map( function ( c ) {
+                    if ( item.id == c.id && item.val != c.val  ){changed = true;}
+                });
+                _this.$set( item , 'is_edited', changed );
+            },
+
+            //配置的参数填写说明
+            get_type_hint: function (type) {
+                var _this = this,
+                    _text = '';
+                _this.type_list.map( function ( t ) {
+                    if ( t.value == type ){_text = t.remark;}
+                });
+                return _text;
+            },
+
+            submit_save: function () {
+                var _this = this,
+                    _fields = [];
+
+                if ( this.unsaved.length == 0 ){
+                    api.tips('未检测到修改', 'cyan');
+                    return false;
+                }
+                this.unsaved.map( function ( c ) {
+                    _fields.push({
+                        id: c.id,
+                        val: c.val,
+                        type: c.type
+                    });
+                });
+                _fields.map( function ( f ) {
+                    if ( f.type == 'switch' ){
+                        f.val = f.val ? 1 : 0;
+                    }
+                });
+                api.send('sys_config_set', _fields, function ( res ) {
+                    _this.page_init();
+                    api.tips('成功保存了 '+res+' 条记录', 'success');
+                } );
+            },
+
+            batch_move: function ( group ) {
+                var _this = this,
+                    _ids = [];
+
+                this.selected.map( function ( s ) {
+                    _ids.push( s.id );
+                });
+                if ( !_ids.length || !group.id ){
+                    api.tips('先选择再操作', 'cyan');
+                    return false;
+                }
+                api.send('sys_config_move', {group_id: group.id, ids: _ids}, function ( res ) {
+                    _this.page_init();
+                    api.tips('成功移动了 '+res+' 条记录', 'success');
+                } );
+            },
+
+            batch_delete: function () {
+                var _this = this,
+                    _ids = [];
+
+                this.selected.map( function ( s ) {
+                    _ids.push( s.id );
+                });
+                if ( !_ids.length ){
+                    api.tips('先选择再操作', 'cyan');
+                    return false;
+                }
+                api.confirm('确认删除吗？', '删除后无法恢复', function () {
+                    api.send('sys_config_delete', {ids: _ids}, function ( res ) {
+                        _this.page_init();
+                        api.tips('成功删除了'+res+'条记录', 'success');
+                    } );
+                });
+            },
+
+            submit_group_create: function () {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form_group_create);
+
+                if (this.$refs.ref_form_group_create.validate()) {
+                    api.send('sys_config_group_create', _fields, function ( res ) {
+                        _this.$refs.ref_form_group_create.reset();
+                        _this.page_init();
+                        api.tips('分组创建成功', 'success');
+                    } );
+                }
+            },
+            update_group: function ( item ) {
+                var _this = this,
+                    _fields;
+
+                if ( !item.title ){
+                    api.tips('分组名称不能为空', 'warning');
+                    return false;
+                }
+                _fields = Object.assign({}, item);
+                _fields.child = undefined;
+
+                api.send('sys_config_group_update', _fields, function ( res ) {
+                    _this.page_init();
+                    api.tips('分组编辑成功', 'success');
+                } );
+            },
+            delete_group: function ( item ) {
+                var _this = this;
+                api.confirm('确认删除吗？', '删除后无法恢复', function () {
+                    api.send('sys_config_group_delete', { id: item.id }, function ( res ) {
+                        _this.page_init();
+                        api.tips('分组删除成功', 'success');
+                    } );
+                });
+
+            },
+
+            open_form_create: function () {
+                var _this = this;
+                _this.form_opened_create = true;
+            },
+            form_submit_create: function () {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form_fields_create);
+
+                //创建 _fields 来进行验证、格式化，不污染表单数据
+                if ( _fields.type == 'switch' ){
+                    _fields.val = _fields.val ? 1 : 0;
+                }
+
+                if (this.$refs.ref_form_create.validate()) {
+                    api.send('sys_config_create', _fields, function ( res ) {
+                        _this.$refs.ref_form_create.reset();
+                        _this.form_opened_create = false;
+                        _this.page_init();
+                        api.tips('创建成功', 'success');
+                    } );
+                }
+            },
+
+            open_form_update: function ( item ) {
+                var _this = this;
+                _this.form_fields_update = Object.assign({}, item);
+                _this.form_opened_update = true;
+            },
+            form_submit_update: function () {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form_fields_update);
+
+                //创建 _fields 来进行验证、格式化，不污染表单数据
+                if ( _fields.type == 'switch' ){
+                    _fields.val = _fields.val ? 1 : 0;
+                }
+                _fields.is_edited = undefined;
+                _fields.code = undefined;
+
+                if (this.$refs.ref_form_update.validate()) {
+                    api.send('sys_config_update', _fields, function ( res ) {
+                        _this.$refs.ref_form_update.reset();
+                        _this.form_opened_update = false;
+                        _this.page_init();
+                        api.tips('编辑成功', 'success');
+                    } );
+                }
+            }
+        },
+        template: '#app_inside'
+    }
+
+</script>

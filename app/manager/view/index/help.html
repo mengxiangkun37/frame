@@ -1,0 +1,57 @@
+
+<style type="text/css">
+
+</style>
+
+<template id="app_inside">
+    <div>
+        <!--页面标题栏-->
+        <v-toolbar flat color="white">
+            <v-toolbar-title>使用帮助</v-toolbar-title>
+            <v-divider class="mx-2" inset vertical></v-divider>
+            <v-spacer></v-spacer>
+        </v-toolbar>
+
+        <v-container class="mt-3 bg-white">
+            <div>
+                <div class="f18 text-bold mb-2">xxxx说明</div>
+                <img src="/z/web_vue/img/pic_default.png">
+            </div>
+        </v-container>
+        <v-container class="mt-3 bg-white">
+            <div>
+                <div class="f18 text-bold mb-2">xxx说明</div>
+                <img src="/z/web_vue/img/pic_default.png">
+            </div>
+        </v-container>
+
+    </div>
+</template>
+
+
+<script>
+
+
+
+    var app_inside = {
+        data: function () {
+            return {
+                items: []
+            }
+        },
+        mounted: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        methods: {
+
+            //页面初始化，推荐统一编写，比较清晰
+            page_init: function () {
+                var _this = this;
+            }
+
+        },
+        template: '#app_inside'
+    }
+
+</script>

@@ -1,0 +1,219 @@
+<style>
+    /*.personal_apply {*/
+        /*background: hsl(74, 53%, 49%);*/
+        /*border: 1px solid #ddd;*/
+        /*width: 198px;*/
+        /*height: 300px;*/
+        /*margin-left: 8px;*/
+        /*border-radius: 5px;*/
+        /*text-align: center;*/
+        /*color: white;*/
+    /*}*/
+
+    /*.company_apply a,*/
+    /*.personal_apply a {*/
+        /*color: white;*/
+    /*}*/
+
+    /*.company_apply {*/
+        /*background: #33b4f4;*/
+        /*border: 1px solid #ddd;*/
+        /*width: 198px;*/
+        /*height: 300px;*/
+        /*margin-left: 8px;*/
+        /*border-radius: 5px;*/
+        /*text-align: center;*/
+    /*}*/
+
+
+</style>
+<template id="app_inside">
+    <div class="fully">
+        <div class="my-2">
+            <img src="{:GT('10127.pic')}" style="width: 1100px; height: 100px;" />
+        </div>
+
+        <el-row :gutter="10" class="mt-2">
+            <el-col :span="16">
+                <div class="index_banner swiper-container ">
+                    <div class="swiper-wrapper">
+                        {foreach name=":getArcs(80)" item="vo"}
+                        <div class="swiper-slide"><img src="{$vo.litpic}"></div>
+                        {/foreach}
+                    </div>
+                    <div class="swiper-pagination"></div>
+                </div>
+            </el-col>
+            <el-col :span="4">
+                <a :href=" $url('index/reg', {type: 1} ) " class="index_personal_apply">
+                    <i class="fa fa-user-circle-o fa-4x"></i>
+                    <div class="f17 mt-2"> 单位志愿者申请 </div>
+                </a>
+            </el-col>
+            <el-col :span="4" class="text-right">
+                <a :href=" $url('index/reg', {type: 2} ) " class="index_company_apply">
+                    <i class="fa fa-users fa-4x"></i>
+                    <div class="f17 mt-2"> 单位志愿者申请 </div>
+                </a>
+            </el-col>
+        </el-row>
+
+
+        <div class="mt-2 index_banner1">
+            <img src="{:GT('10128.pic')}" style="width: 1100px; height: 100px;" />
+        </div>
+
+        <el-row :gutter="20" class="mt-2">
+            <el-col :span="8">
+                <div class="index_border bg-white px-3" style="min-height: 330px;">
+                    <div class="index_title">
+                        <a href="{:getClassify(116, false, 'class_link')}" class="title_more text-muted pull-right">更多 <i class="fa fa-plus-circle text-primary"></i></a>
+                        <div class="title_text">{:getClassify(116, false, 'title')}</div>
+                    </div>
+                    <div class="index_news">
+                        {foreach name=":getArcs(116, 6)" item="vo"}
+                        <a href="{$vo.article_link}">
+                            <span>{$vo.utime|date="m-d",###}</span>
+                            <div><i class="text-primary mr-2">▪</i>{$vo.title}</div>
+                        </a>
+                        {/foreach}
+                    </div>
+                </div>
+            </el-col>
+
+            <el-col :span="8">
+                <div class="index_border bg-white px-3" style="min-height: 330px;">
+                    <div class="index_title">
+                        <a href="{:getClassify(105, false, 'class_link')}" class="title_more text-muted pull-right">更多 <i class="fa fa-plus-circle text-primary"></i></a>
+                        <div class="title_text">{:getClassify(105, false, 'title')}</div>
+                    </div>
+                    <div class="index_news">
+                        {foreach name=":getArcs(105, 6)" item="vo"}
+                        <a href="{$vo.article_link}">
+                            <span>{$vo.utime|date="m-d",###}</span>
+                            <div><i class="text-primary mr-2">▪</i>{$vo.title}</div>
+                        </a>
+                        {/foreach}
+                    </div>
+                </div>
+            </el-col>
+
+            <el-col :span="8">
+                <div class="index_border bg-white px-3" style="min-height: 330px;">
+                    <div class="index_title">
+                        <a href="{:getClassify(117, false, 'class_link')}" class="title_more text-muted pull-right">更多 <i class="fa fa-plus-circle text-primary"></i></a>
+                        <div class="title_text">{:getClassify(117, false, 'title')}</div>
+                    </div>
+                    <div class="index_news">
+                        {foreach name=":getArcs(117, 6)" item="vo"}
+                        <a href="{$vo.article_link}">
+                            <span>{$vo.utime|date="m-d",###}</span>
+                            <div><i class="text-primary mr-2">▪</i>{$vo.title}</div>
+                        </a>
+                        {/foreach}
+                    </div>
+                </div>
+
+            </el-col>
+
+        </el-row>
+
+
+        <el-row :gutter="20" class="mt-2">
+            <el-col :span="12" class="index_banner2">
+                <img src="{:SC('index_banner3')}" />
+            </el-col>
+            <el-col :span="12" class="index_banner2">
+                <img src="{:SC('index_banner4')}" />
+            </el-col>
+        </el-row>
+
+        <el-row :gutter="20" class="mt-2">
+            {foreach name=":GT('index_link_four')" item="vo"}
+            <el-col :span="6" class="index_banner3">
+                <img src="{$vo.pic}" />
+            </el-col>
+            {/foreach}
+        </el-row>
+
+        <el-row :gutter="20" class="mt-2">
+            <el-col :span="12">
+                <div class="bg-white px-3" style="min-height: 340px;">
+                    <div class="index_title">
+                        <a href="{:getClassify(107, false, 'class_link')}" class="title_more text-muted pull-right">更多 <i class="fa fa-plus-circle text-primary"></i></a>
+                        <div class="title_text">{:getClassify(107, false, 'title')}</div>
+                    </div>
+                    <el-row :gutter="20" >
+                        <el-col :span="10">
+                            {foreach name=":getArcs(107, 1)" item="vo"}
+                            <a href="{$vo.article_link}">
+                                <img src="{$vo.litpic}" class="mt-3" />
+                                <div class="text-overflow-2 f16 text-default">{$vo.title}</div>
+                                <div class="text-overflow-3 mt-2 text-muted">{$vo.description}</div>
+                            </a>
+                            {/foreach}
+                        </el-col>
+                        <el-col :span="14" class="index_news">
+                            {foreach name=":getArcs(107, 6)" item="vo"}
+                            <a class="text-default text-overflow" href="{$vo.article_link}">
+                                <div><i class="text-primary mr-2">▪</i>{$vo.title}</div>
+                            </a>
+                            {/foreach}
+                        </el-col>
+                    </el-row>
+                </div>
+            </el-col>
+            <el-col :span="12">
+                <div class="bg-white px-3" style="min-height: 340px;">
+                    <div class="index_title">
+                        <a href="{:getClassify(108, false, 'class_link')}" class="title_more text-muted pull-right">更多 <i class="fa fa-plus-circle text-primary"></i></a>
+                        <div class="title_text">{:getClassify(108, false, 'title')}</div>
+                    </div>
+                    <div class="my-3">
+                        {foreach name=":getArcs(108, 1)" item="vo"}
+                        <el-row :gutter="20" >
+                            <el-col :span="8">
+                                <a href="{$vo.article_link}"><img style="height:120px;width:160px" src="{$vo.litpic}" /></a>
+                            </el-col>
+                            <el-col :span="16" class="pt-2">
+                                <a class="text-default" href="{$vo.article_link}">
+                                    <h3 class="text-overflow-2 f16">{$vo.title} </h3>
+                                    <div class="text-overflow-3 mt-2"> {$vo.description}</div>
+                                </a>
+                            </el-col>
+                        </el-row>
+                        {/foreach}
+                    </div>
+                    <div class="mt-2">
+                        <el-row :gutter="20" >
+                            {foreach name=":getArcs(108, 4)" item="vo"}
+                            <el-col :span="6">
+                                <a href="{$vo.article_link}" class="text-default">
+                                    <img style="height:90px;width:120px" src="{$vo.litpic}" />
+                                    <div class="text-overflow">{$vo.title}</div>
+                                </a>
+                            </el-col>
+                            {/foreach}
+                        </el-row>
+                    </div>
+                </div>
+            </el-col>
+        </el-row>
+
+    </div>
+</template>
+<script>
+    var app_inside = {
+        data: function () {
+            return {
+            }
+        },
+        created: function () {
+            var _this = this;
+        },
+        methods: {
+        },
+
+        template: '#app_inside'
+    };
+</script>

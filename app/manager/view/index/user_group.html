@@ -1,0 +1,526 @@
+
+<style type="text/css">
+
+</style>
+
+<template id="app_inside">
+    <div>
+        <!--页面标题栏-->
+        <v-toolbar flat color="white">
+            <v-toolbar-title>用户组/权限管理</v-toolbar-title>
+            <v-divider class="mx-2" inset vertical></v-divider>
+            <v-menu :close-on-content-click="false" offset-y slide-x max-width="500">
+                <v-btn slot="activator" color="warning" dark><v-icon class="mr-2">help_outline</v-icon> 帮助</v-btn>
+                <div class="pa-2 bg-white">
+                    <ol>
+                        <li>权限的关联机制：用户属于用户组，用户组关联菜单、API权限</li>
+                        <li>超级管理员组会跳过所有校验，尽量不要修改</li>
+                    </ol>
+                </div>
+            </v-menu>
+            <v-spacer></v-spacer>
+
+            <v-btn @click="open_form_create()" color="primary" dark class="mb-2"><i class="fa fa-user-plus mr-1"></i> 创建新用户组</v-btn>
+            <v-dialog v-model="form_opened_create" max-width="500px">
+                <v-card>
+                    <v-card-title>
+                        <div>
+                            <div class="title">创建新用户组</div>
+                        </div>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text>
+                        <v-form ref="ref_form_create" lazy-validation>
+                            <v-text-field v-model="form_fields_create.title" :rules="[$com_rules.required]" label="用户组名称"></v-text-field>
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="blue darken-1" flat @click.native="form_submit_create()">提交创建</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+            <v-dialog v-model="form_opened_update" max-width="500px">
+                <v-card>
+                    <v-card-title>
+                        <div>
+                            <div class="title">编辑用户组</div>
+                        </div>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text>
+                        <v-form ref="ref_form_update" lazy-validation>
+                            <v-text-field v-model="form_fields_update.title" :rules="[$com_rules.required]" label="用户组名称"></v-text-field>
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="blue darken-1" flat @click.native="form_submit_update()">提交保存</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+            <v-dialog v-model="set_user_opened" scrollable max-width="500px">
+                <v-card>
+                    <v-card-title>
+                        <div>
+                            <div class="title">设置 {{ set_user_item.title }} 下的用户</div>
+                        </div>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text style="height: 500px;">
+                        <v-checkbox v-model=" set_user_item.user " :value=" item.id " v-for=" item in user_list " class="mt-0 pt-0" :key="item.id" v-if=" item.id != 1 ">
+                            <label slot="label">
+                                <v-avatar :tile="true" :size="40" color="grey lighten-4">
+                                    <img :src="item.avatar || $GV.DEFAULT_IMG.avatar ">
+                                </v-avatar>
+                                <span class="ml-2">{{ item.username + ' - ' + item.name }}</span>
+                            </label>
+                        </v-checkbox>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn flat @click.native="select_all('user')">全选</v-btn>
+                        <v-btn color="blue darken-1" flat @click.native="user_group_set('user')">提交保存</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+            <v-dialog v-model="set_nav_opened" scrollable max-width="500px">
+                <v-card>
+                    <v-card-title>
+                        <div>
+                            <div class="title">设置 {{ set_user_item.title }} 可见的菜单</div>
+                            <div class="f14 text-muted">菜单只控制是否显示在后台的左侧导航栏，不做权限判断，因为所有数据走的是API接口。菜单分组如未勾选，分组下的菜单即使勾选也不会显示。</div>
+                        </div>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text style="height: 500px;">
+                        <template v-for=" item in navigation_list ">
+                            <v-checkbox v-model=" set_user_item.nav " :value=" item.id " class="mt-0 pt-0">
+                                <label slot="label">
+                                    <v-icon>{{item.icon}}</v-icon>
+                                    <span class="ml-1">{{ item.title }}</span>
+                                </label>
+                            </v-checkbox>
+                            <v-checkbox v-model=" set_user_item.nav " :value=" sub.id " class="mt-0 pt-0" v-for=" sub in item.child " :key="sub.id">
+                                <label slot="label">
+                                    <v-icon class="ml-5">{{sub.icon}}</v-icon>
+                                    <span class="ml-1">{{ sub.title }}</span>
+                                </label>
+                            </v-checkbox>
+                        </template>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn flat @click.native="select_all('nav')">全选</v-btn>
+                        <v-btn color="blue darken-1" flat @click.native="user_group_set('nav')">提交保存</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+            <v-dialog v-model="set_api_opened" scrollable max-width="500px">
+                <v-card>
+                    <v-card-title>
+                        <div>
+                            <div class="title">设置 {{ set_user_item.title }} 可用的API接口</div>
+                            <div class="f14 text-muted">理论上所有的数据都从API中获取，该处的权限特别重要。</div>
+                            <div class="f14 text-danger">新增接口（除需要登录关闭，默认无任何用户组可使用），需要在此配置，否则将无法使用。</div>
+                            <div class="f14 text-danger">超级管理员，原有系统接口不要修改，重要接口无权限则后台无法使用。</div>
+                        </div>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text class="py-0" style="height: 500px;">
+                        <v-expansion-panel class="elevation-0">
+                            <v-expansion-panel-content v-for=" controller in api_controller " ripple>
+                                <div class="f16 text-muted" slot="header">控制器：{{controller}} ({{ api_count_helper( controller ) }})</div>
+                                <div class="text-xs-right">
+                                    <v-btn flat @click="select_group( controller )"><v-icon class="mr-2">done_all</v-icon> 全选该分组</v-btn>
+                                </div>
+                                <div class="pa-2">
+                                    <v-checkbox  v-for=" item in get_api_filter( controller ) " v-model=" set_user_item.api " :value=" item.id " class="mt-0 pt-0" :key="item.id">
+                                        <label slot="label">
+                                            {{ item.title }} - {{ item.api }}
+                                        </label>
+                                    </v-checkbox>
+                                </div>
+                            </v-expansion-panel-content>
+                        </v-expansion-panel>
+                    </v-card-text>
+                    <v-divider></v-divider>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn flat @click.native="select_all('api')">全选</v-btn>
+                        <v-btn color="blue darken-1" flat @click.native="user_group_set('api')">提交保存</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+        </v-toolbar>
+
+
+        <!--表格模板-->
+        <v-data-table no-data-text="暂无数据" :headers="headers" :items="group_list" :pagination.sync="pagination" hide-actions>
+            <template slot="items" slot-scope="props">
+                <tr>
+                    <td>{{ props.item.title }}</td>
+                    <td valign="top">
+                        <v-chip v-for=" item in user_list " v-if=" in_arr( item.id, props.item.user ) " :key="item.id">
+                            <v-avatar>
+                                <img :src=" item.avatar || $GV.DEFAULT_IMG.avatar ">
+                            </v-avatar>
+                            <span class="ml-2">{{ item.username + ' - ' + item.name }}</span>
+                        </v-chip>
+                        <v-btn @click=" open_set_form(props.item, 'user') ">管理</v-btn>
+                    </td>
+                    <td valign="top">
+                        <div class="pt-3 text-muted" v-if=" props.item.id == 1 ">超级管理员组拥有菜单权限</div>
+                        <template v-else>
+                            <template v-for=" item in navigation_list " v-if=" in_arr( item.id, props.item.nav ) ">
+                                <v-chip>
+                                    <v-icon>{{item.icon}}</v-icon>
+                                    <span class="ml-1">{{ item.title }}</span>
+                                </v-chip>
+                                <v-chip v-for=" sub in item.child " v-if=" in_arr( sub.id, props.item.nav ) " :key="sub.id">
+                                    <v-icon>{{sub.icon}}</v-icon>
+                                    <span class="ml-1">{{ sub.title }}</span>
+                                </v-chip>
+                            </template>
+                            <v-btn @click=" open_set_form(props.item, 'nav') ">管理</v-btn>
+                        </template>
+                    </td>
+                    <td valign="top">
+                        <div class="pt-3 text-muted" v-if=" props.item.id == 1 ">超级管理员组拥有API权限</div>
+                        <template v-else>
+                            <v-chip v-for=" item in api_list " v-if=" in_arr( item.id, props.item.api ) " :key="item.id">
+                                {{ item.api }}
+                            </v-chip>
+                            <v-btn @click=" open_set_form(props.item, 'api') ">管理</v-btn>
+                        </template>
+                    </td>
+                    <td valign="top" class="pa-2">
+                        <div v-if=" props.item.id != 1 ">
+                            <v-icon class="mr-2" @click.stop="open_form_update(props.item)">edit</v-icon>
+                            <v-icon @click.stop="delete_selected(props.item)">delete</v-icon>
+                        </div>
+                    </td>
+                </tr>
+
+            </template>
+        </v-data-table>
+
+    </div>
+</template>
+
+
+<script>
+
+
+
+    var app_inside = {
+        data: function () {
+            return {
+
+                headers: [
+                    { text: '用户组名', value: 'title', width: '150px' },
+                    { text: '组内用户', value: 'user', width: '25%', sortable: false },
+                    { text: '菜单授权', value: 'nav', width: '25%', sortable: false },
+                    { text: 'API授权', value: 'api', width: '25%', sortable: false},
+                    { text: '操作', value: 'id', sortable: false, width: '150px'}
+                ],
+                //翻页的配置，必须写
+                pagination: {
+                    rowsPerPage: -1,     //显示全部，推荐-1
+                    sortBy: 'id'         //默认排序字段，推荐设置
+                },
+
+                //其他业务数据
+                navigation_list: [],
+                group_list: [],
+                user_list: [],
+                api_list: [],
+                api_controller: [],
+
+                set_user_opened: false,
+                set_api_opened: false,
+                set_nav_opened: false,
+                set_user_item: {},
+
+
+                //表单方面：可以放在一起，用字段控制，不过分开写比较好，比较清晰，而且有时新增和编辑的字段不同就需要更多字段控制，反而比较麻烦且不容易统一处理。
+                //新增的表单
+                form_opened_create: false,
+                form_show_create_password: false,
+                form_fields_create: {
+                    title: ''
+                },
+
+                //编辑的表单
+                form_opened_update: false,
+                form_show_update_password: false,
+                form_fields_update: {}
+            }
+        },
+        mounted: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        computed: {
+
+        },
+        methods: {
+
+            //页面初始化，推荐统一编写，比较清晰
+            page_init: function () {
+                var _this = this;
+                api.send('user_group_list', {}, function ( res_group ) {
+                    res_group.map( function ( g ) {
+                        g.nav = g.nav ? g.nav.split(',') : [];
+                        g.api = g.api ? g.api.split(',') : [];
+                        g.user = g.user ? g.user.split(',') : [];
+
+                        g.nav.map( function ( r, i ) {g.nav[i] = parseInt(r)});
+                        g.api.map( function ( r, i ) {g.api[i] = parseInt(r)});
+                        g.user.map( function ( r, i ) {g.user[i] = parseInt(r)});
+                    });
+                    _this.group_list = res_group;
+
+                    api.send('user_list', {}, function ( res ) {
+                        _this.user_list = res.data_list;
+                    } );
+                    api.send('navigation_list', {}, function ( res ) {
+                        var _top = res.filter( function ( t ) {
+                            return t.pid == 0;
+                        });
+
+                        _top.map( function ( t ) {
+                            t.child = [];
+                            res.map( function ( n ) {
+                                if ( t.id == n.pid ){
+                                    t.child.push( n );
+                                }
+                            });
+                        });
+                        _this.navigation_list = _top;
+                    } );
+                    api.send('api_list', { page_size: 9999}, function ( res ) {
+                        var api_controller = [];
+                        res.data_list.map( function ( api ) {
+                            if ( !in_array( api.CONTROLLER_NAME, api_controller ) ){
+                                api_controller.push( api.CONTROLLER_NAME )
+                            }
+                        });
+                        _this.api_controller = api_controller;
+                        _this.api_list = res.data_list;
+                    } );
+
+                } );
+            },
+
+            //表格加载与方法
+            load_data: function ( reload ) {
+                var _this = this;
+            },
+
+            get_api_filter: function ( CONTROLLER_NAME ) {
+                return this.api_list.filter(function ( api ) {
+                    return api.CONTROLLER_NAME == CONTROLLER_NAME;
+                })
+            },
+            in_arr: function ( val, arr ) {
+                return in_array( val, arr );
+            },
+            api_count_helper: function ( controller ) {
+                var _this = this,
+                    _selected = 0,
+                    _all = 0,
+                    _arr = _this.get_api_filter( controller ) || 0;
+                _arr.map( function ( api ) {
+                    if ( !_this.set_user_item.api ){
+                        return false;
+                    }
+                    _this.set_user_item.api.map( function ( s ) {
+                        if ( s == api.id ){
+                            _selected++;
+                        }
+                    })
+                    _all++;
+                });
+                return _selected + ' / ' + _all;
+            },
+
+            select_all: function (type) {
+                var _this = this,
+                    _arr = [];
+                switch ( type ){
+                    case 'user':
+                        _this.user_list.map( function ( n ) {
+                            if(n.id != 1){
+                                _arr.push( n.id );
+                            }
+                        });
+                        _this.set_user_item.user = _arr;
+                        break;
+                    case 'api':
+                        _this.api_list.map( function ( n ) {
+                            _arr.push( n.id );
+                        });
+                        _this.set_user_item.api = _arr;
+                        break;
+                    case 'nav':
+                        _this.navigation_list.map( function ( n ) {
+                            _arr.push( n.id );
+                            n.child.map( function ( c ) {
+                                _arr.push( c.id );
+                            });
+                        });
+                        _this.set_user_item.nav = _arr;
+                        break;
+                }
+            },
+
+            //业务方法=======
+            select_group: function ( CONTROLLER_NAME ) {
+                var _this = this,
+                    arr = [],
+                    ready_count = 0,
+                    in_count = 0;
+
+                _this.api_list.filter(function ( api ) {
+                    if ( api.CONTROLLER_NAME == CONTROLLER_NAME ){
+                        arr.push( api.id );
+                        ready_count++;
+                        _this.set_user_item.api.map( function ( s ) {
+                            if ( s  == api.id ){
+                                in_count++;
+                            }
+                        });
+                    }
+                });
+                _this.set_user_item.api = ready_count == in_count ? [] : arr;
+            },
+
+            open_set_form: function ( item, type ) {
+                var _this = this;
+                this.set_user_item = Object.assign({},item);
+                switch ( type ){
+                    case 'user':
+                        _this.set_user_opened = true;
+                        break;
+                    case 'api':
+                        _this.set_api_opened = true;
+                        break;
+                    case 'nav':
+                        _this.set_nav_opened = true;
+                        break;
+                }
+            },
+            user_group_set: function ( type ) {
+                var _this = this,
+                    _vaild_list = [],
+                    _fields = {
+                        value: this.set_user_item[type],
+                        type: type,
+                        id: this.set_user_item.id
+                    };
+
+                if ( _fields.type == 'api' ){
+                    _this.api_list.filter(function ( api ) {
+                        _fields.value.map( function (sid) {
+                            if ( api.id == sid ){
+                                _vaild_list.push( sid );
+                            }
+                        } )
+                    });
+                    _fields.value = _vaild_list;
+                }
+                if ( _fields.type == 'nav' ){
+                    _this.navigation_list.filter(function ( top ) {
+                        top.child.map( function ( sub ) {
+                            _fields.value.map( function (sid) {
+                                if ( sub.id == sid ){
+                                    _vaild_list.push( sid );
+                                }
+                            } )
+                        });
+                        _fields.value.map( function (sid) {
+                            if ( top.id == sid ){
+                                _vaild_list.push( sid );
+                            }
+                        } )
+                    });
+                    _fields.value = _vaild_list;
+                }
+
+                api.send('user_group_set', _fields, function ( res ) {
+                    _this.page_init();
+                    switch ( type ){
+                        case 'user':
+                            _this.set_user_opened = false;
+                            break;
+                        case 'api':
+                            _this.set_api_opened = false;
+                            break;
+                        case 'nav':
+                            _this.set_nav_opened = false;
+                            break;
+                    }
+                    api.tips('设置成功', 'success');
+                } );
+            },
+
+            open_form_create: function () {
+                var _this = this;
+                _this.form_opened_create = true;
+            },
+            form_submit_create: function () {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form_fields_create);
+
+                if (this.$refs.ref_form_create.validate()) {
+                    api.send('user_group_create', _fields, function ( res ) {
+                        _this.form_fields_create = {
+                            title: ''
+                        };
+                        _this.form_opened_create = false;
+                        _this.page_init();
+                        api.tips('创建成功', 'success');
+                    } );
+                }
+            },
+
+            open_form_update: function ( item ) {
+                var _this = this;
+                _this.form_fields_update = Object.assign({}, item);
+                _this.form_opened_update = true;
+            },
+            form_submit_update: function () {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form_fields_update);
+
+                _fields.child = undefined;
+
+                if (this.$refs.ref_form_update.validate()) {
+                    api.send('user_group_update', _fields, function ( res ) {
+                        _this.form_opened_update = false;
+                        _this.page_init();
+                        api.tips('编辑成功', 'success');
+                    } );
+                }
+            },
+            delete_selected: function ( item ) {
+                var _this = this;
+                api.confirm('确认删除吗？', '删除后无法恢复', function () {
+                    api.send('user_group_delete', { id: item.id }, function ( res ) {
+                        _this.page_init();
+                        api.tips('删除成功', 'success');
+                    } );
+                });
+
+            }
+        },
+        template: '#app_inside'
+    }
+
+</script>

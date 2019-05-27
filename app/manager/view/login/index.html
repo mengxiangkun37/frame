@@ -1,0 +1,119 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>{$pagetitle}</title>
+<meta name="keywords" content="{:SC('admin_title')}" />
+<meta name="description" content="{:SC('admin_description')}" />
+<link rel="icon" type="image/x-icon" href="{:SC('site_logo_mini')}" />
+{include file="public/cssjs" /}
+<style type="text/css">
+.login_bg { position: absolute; left: 0; top: 0; bottom: 0; right: 0;}
+</style>
+</head>
+<body>
+
+<div id="page_container">
+	<v-img src="{:IMG}/login_bg.jpg" class="login_bg" height="100%" gradient="to top right, rgba(100,115,201,.33), rgba(25,32,72,.7)"></v-img>
+	<app_login></app_login>
+</div>
+
+<template id="app_login">
+	<v-app>
+		<v-content>
+			<v-container fluid fill-height>
+				<v-slide-y-transition mode="out-in">
+					<v-layout align-center justify-center v-if="page_inited">
+						<v-flex xs12 sm8 md4 lg3>
+							<v-card class="elevation-12 w10">
+								<v-toolbar dark color="primary">
+									<v-toolbar-title>
+										<v-avatar size="28px" tile>
+											<img src="{:SC('site_logo_mini')}">
+										</v-avatar>
+										<span>欢迎使用{$pagetitle}管理系统</span>
+									</v-toolbar-title>
+								</v-toolbar>
+								<v-card-text>
+									<v-form ref="form">
+										<v-text-field v-model="username" :readonly="disable_auto_input" :rules="[$com_rules.required]" prepend-icon="person" label="用户名" type="text"></v-text-field>
+										<v-text-field v-model="password" :readonly="disable_auto_input" :rules="[$com_rules.required]" prepend-icon="lock" label="密码" type="password"></v-text-field>
+										<v-text-field v-model="verify" :readonly="disable_auto_input" :rules="[$com_rules.required]" prepend-icon="code" label="验证码" type="text">
+											<div slot="append-outer" style="min-width: 100px">
+												<img alt="点击更换" title="点击更换" :src="captcha" @click=" change_captcha() ">
+											</div>
+										</v-text-field>
+									</v-form>
+								</v-card-text>
+								<v-card-actions>
+									<v-spacer></v-spacer>
+									<v-btn color="primary" type="submit" @click="submit_do">提交登录</v-btn>
+								</v-card-actions>
+							</v-card>
+						</v-flex>
+					</v-layout>
+				</v-slide-y-transition>
+			</v-container>
+		</v-content>
+	</v-app>
+</template>
+
+<script>
+    Vue.component('app_login', {
+        data:function(){
+			return {
+                username: '',
+				password: '',
+                verify:'',
+
+                captcha_src: '{:captcha_src()}',
+                captcha: '',
+                disable_auto_input: true,
+                page_inited: false
+			}
+		},
+		methods: {
+            submit_do: function () {
+                var _this = this,
+					_fields = {
+                        username: _this.username,
+                        password: _this.password,
+                        verify: _this.verify
+					};
+
+                if (this.$refs.form.validate()) {
+                    api.send('check_login', _fields, function ( res ) {
+                        api.tips('登录成功！', 'success');
+                        setTimeout( function () {
+                            redirect( _this.$GV.LOGIN_DEFAULT );
+                        }, 1000)
+                    }, function () {
+                        _this.change_captcha();
+                    })
+                }
+            },
+            change_captcha: function () {
+				this.captcha = this.captcha_src + '?d=' + Math.random();
+				this.verify = '';
+            }
+		},
+		mounted: function(){
+            var _this = this;
+            _this.change_captcha();
+            setTimeout( function () {
+                _this.disable_auto_input = false;
+                _this.page_inited = true;
+            }, 100);
+		},
+        template: '#app_login'
+	});
+
+	new Vue({
+		el: '#page_container'
+	})
+</script>
+{include file="common@common/api_fun" /}
+</body>
+</html>

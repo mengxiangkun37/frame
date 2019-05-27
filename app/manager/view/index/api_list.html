@@ -1,0 +1,504 @@
+
+<style type="text/css">
+
+</style>
+
+<template id="app_inside">
+    <div>
+        <!--页面标题栏-->
+        <v-toolbar flat color="white">
+            <v-toolbar-title>全局API列表 - V2.2</v-toolbar-title>
+            <v-divider class="mx-2" inset vertical></v-divider>
+            <v-menu :close-on-content-click="false" offset-y slide-x max-width="500">
+                <v-btn slot="activator" color="warning" dark><v-icon class="mr-2">help_outline</v-icon> 帮助</v-btn>
+                <div class="pa-2 bg-white">
+                    <ol>
+                        <li>20190329已整合原业务api机制，需要在调用api的控制器中从api表中获取，加上MODULE_NAME限定</li>
+                        <li>原理：对应同模块下 api 分组中的方法，调起方式：通过前端组件api.send方法，调起后台api控制器下的index方法，转发给api分组对应的控制器与方法</li>
+                        <li>权限控制在用户组中设定。要求登录时，会检测session中的uid，确保uid存在</li>
+                        <li>该页面仅限后台使用，面对客户端的业务方法，如：home，可以复制该API机制</li>
+                        <li>目前仅起到注册作用，以保证灵活性，未来将实现参数限制、返回值示例等</li>
+                    </ol>
+                </div>
+            </v-menu>
+            <v-spacer></v-spacer>
+
+            <v-btn @click=" smart_create_opened = true " color="cyan" dark><i class="fa fa-plus-square mr-1"></i> 引导式创建</v-btn>
+            <v-dialog v-model="smart_create_opened" max-width="800px">
+                <v-card>
+                    <v-card-title>
+                        <div>
+                            <div class="title">引导式创建接口</div>
+                            <div class="f14 text-muted">一次创建多个接口，并构建PHP接口的代码提供复制，如创建goods的增删改查方法，在下面填写：商品、goods、goods。<b>必须先建表</b></div>
+                        </div>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text>
+                        <v-form ref="ref_form_smart_create" lazy-validation>
+
+                            <v-container grid-list-sm fluid class="pa-0">
+                                <v-layout row>
+                                    <v-flex xs4>
+                                        <v-text-field v-model="smart_create.name_text" :rules="[$com_rules.required]" label="接口业务名" hint="会自动拼接如：商品-新增、商品-编辑"></v-text-field>
+                                    </v-flex>
+                                    <v-flex xs4>
+                                        <v-text-field v-model="smart_create.name_space" :rules="[$com_rules.required]" label="接口命名空间（前缀）" hint="会自动拼接如：goods_create、goods_update"></v-text-field>
+                                    </v-flex>
+                                    <v-flex xs4>
+                                        <v-text-field v-model="smart_create.controller" :rules="[$com_rules.required]" label="控制器名(goods.php写goods)"></v-text-field>
+                                    </v-flex>
+                                </v-layout>
+
+                                <v-layout row>
+                                    <v-flex xs6>
+                                        <v-text-field v-model="smart_create.table" label="表名，加载表内字段（确保表存在）"></v-text-field>
+                                    </v-flex>
+                                    <v-flex xs6>
+                                        <v-btn @click=" load_table_info() " color="success"><i class="fa fa-download mr-1"></i>开始创建</v-btn>
+                                        <v-btn @click=" $redirect(0) "><i class="fa fa-refresh mr-1"></i>刷新重置表单</v-btn>
+                                    </v-flex>
+                                </v-layout>
+
+                                <v-layout row v-if=" smart_create_more ">
+                                    <v-flex xs3 v-for=" item in smart_create.types ">
+                                        <div>
+                                            <v-checkbox v-model="item.selected" :label="item.text"></v-checkbox>
+                                            <template v-if=" item.selected ">
+                                                <v-text-field v-model="item.api" :rules="[$com_rules.required]" label="调用标识，可修改"></v-text-field>
+                                                <v-text-field v-model="item.text" :rules="[$com_rules.required]" label="接口名称，可修改"></v-text-field>
+                                                <v-checkbox v-model="item.login_require" label="验证登录"></v-checkbox>
+                                                <v-select v-model="item.fields" :items="smart_create.table_fields" :menu-props="{ maxHeight: '400' }" label="允许操作字段" multiple persistent-hint v-if=" item.type != 'delete' ">
+                                                    <v-list-tile slot="prepend-item" ripple @click=" item.fields = smart_create.table_fields.slice() ">
+                                                        <v-list-tile-title>全选</v-list-tile-title>
+                                                    </v-list-tile>
+                                                    <v-divider slot="prepend-item" class="mt-2"></v-divider>
+                                                </v-select>
+                                            </template>
+                                        </div>
+                                    </v-flex>
+                                </v-layout>
+                                <v-layout row wrap v-if=" smart_create_more ">
+                                    <v-flex xs12>
+                                        <div class="w10">
+                                            <pre class="w10"><code class="w10 f13 font-weight-thin">
+    // $rule ：对于新增、编辑业务的PHP校验方法，参考：https://www.kancloud.cn/manual/thinkphp5/129352
+    $rule = [
+        ['code', 'require|max:100|alphaDash|unique:sysconfig', '41021|41022|41023|41030'],
+        ['title', 'require|max:100', '41012|41025'],
+        ['type', 'require', '41026'],
+        ['tips', 'max:200', '41027'],
+        ['group_id', 'require', '41028']
+    ];
+    // $field 字段为thinkphp机制的$field方法，为了安全与稳定运行，field不建议留空，新增、编辑不要带ID或其他主键。复制PHP代码后可后续再编辑，该创建为简单的代码提示
+    //Api的快捷方法见：common/ApiCommon.php类
+
+---------------------------------可复制下面的代码到{{smart_create.controller}}.php 中------------------------------------
+                                            <template v-for=" item in smart_create.types "><template v-if=" item.type == 'list' ">
+        //该参考方法集成 搜索条件设定、分页 功能，如只获取简单数据，直接查库即可
+        public function {{item.api}}($param = null){
+            $field = '{{item.fields.join(',')}}';
+            $rule = [];
+            return $this->com_page_list( '{{smart_create.table}}', $param, $field );
+        }
+    </template><template v-if=" item.type == 'delete' ">
+        // com_delete 第二参数传 where 条件，支持 in
+        public function {{item.api}}($param = null){
+            return $this->com_delete( '{{smart_create.table}}', [ 'id' => $param['id'] ] );
+        }
+    </template><template v-if=" item.type == 'create' || item.type == 'update' ">
+        //{{item.text}}
+        public function {{item.api}}($param = null){
+            $field = '{{item.fields.join(',')}}';
+            $rule = [];
+            return $this->com_{{item.type}}( '{{smart_create.table}}', $param, $rule, $field );
+        }
+    </template></template>
+</code></pre>
+                                        </div>
+                                    </v-flex>
+                                </v-layout>
+                            </v-container>
+
+
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="blue darken-1" flat @click.native="smart_submit_create()">提交创建</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+            <v-btn @click="open_form_create()" color="primary" dark><i class="fa fa-plus mr-1"></i> 创建新接口</v-btn>
+            <v-dialog v-model="form_opened_create" max-width="500px">
+                <v-card>
+                    <v-card-title>
+                        <div>
+                            <div class="title">创建新接口</div>
+                            <div class="f14 text-muted">接口调用标识建议语义清晰，CONTROLLER建议业务分割。通用权限在用户组中设定，更细节的权限控制可以在控制器内自行编写。</div>
+                        </div>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text>
+                        <v-form ref="ref_form_create" lazy-validation>
+                            <v-text-field v-model="form_fields_create.title" :rules="[$com_rules.required]" label="接口名称"></v-text-field>
+                            <v-text-field v-model="form_fields_create.api" :rules="[$com_rules.required]" label="调用标识"></v-text-field>
+                            <v-text-field v-model="form_fields_create.MODULE_NAME" :rules="[$com_rules.required]" label="MODULE_NAME"></v-text-field>
+                            <v-text-field v-model="form_fields_create.CONTROLLER_NAME" :rules="[$com_rules.required]" label="CONTROLLER"></v-text-field>
+                            <v-text-field v-model="form_fields_create.ACTION_NAME" :rules="[$com_rules.required]" label="ACTION"></v-text-field>
+                            <div class="flex">
+                                <v-checkbox v-model="form_fields_create.login_require" label="验证登录"></v-checkbox>
+                                <v-checkbox v-model="form_fields_create.success_require" label="成功记录日志"></v-checkbox>
+                                <v-checkbox v-model="form_fields_create.error_require" label="失败记录日志"></v-checkbox>
+                            </div>
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="blue darken-1" flat @click.native="form_submit_create()">提交创建</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+       
+            <v-dialog v-model="form_opened_update" max-width="500px">
+                <v-card>
+                    <v-card-title>
+                        <div>
+                            <div class="title">编辑接口</div>
+                            <div class="f14 text-muted">接口调用标识建议语义清晰，CONTROLLER建议业务分割。通用权限在用户组中设定，更细节的权限控制可以在控制器内自行编写。</div>
+                        </div>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text>
+                        <v-form ref="ref_form_update" lazy-validation>
+                            <v-text-field v-model="form_fields_update.title" :rules="[$com_rules.required]" label="接口名称"></v-text-field>
+                            <v-text-field v-model="form_fields_update.api" :rules="[$com_rules.required]" label="调用标识"></v-text-field>
+                            <v-text-field v-model="form_fields_update.MODULE_NAME" :rules="[$com_rules.required]" label="MODULE_NAME"></v-text-field>
+                            <v-text-field v-model="form_fields_update.CONTROLLER_NAME" :rules="[$com_rules.required]" label="CONTROLLER"></v-text-field>
+                            <v-text-field v-model="form_fields_update.ACTION_NAME" :rules="[$com_rules.required]" label="ACTION"></v-text-field>
+                            <div class="flex">
+                                <v-checkbox v-model="form_fields_update.login_require" label="验证登录"></v-checkbox>
+                                <v-checkbox v-model="form_fields_update.success_require" label="成功记录日志"></v-checkbox>
+                                <v-checkbox v-model="form_fields_update.error_require" label="失败记录日志"></v-checkbox>
+                            </div>
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="blue darken-1" flat @click.native="form_submit_update()">提交保存</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+        </v-toolbar>
+
+
+
+        <com_search ref="search" :search_config.sync=" search " @do_search=" load_data "></com_search>
+
+        <!--表格模板-->
+        <v-data-table :headers="headers" :items="data_list" no-data-text="暂无数据" :pagination.sync="pagination" :loading="loading" hide-actions>
+            <template slot="items" slot-scope="props">
+                <td>{{ props.item.title }}</td>
+                <td>{{ props.item.api }}</td>
+                <td>{{ props.item.MODULE_NAME }}</td>
+                <td>{{ props.item.CONTROLLER_NAME }}</td>
+                <td>{{ props.item.ACTION_NAME }}</td>
+                <td>
+                    <com_status :value="props.item.login_require"></com_status>
+                </td>
+                <td>
+                    <com_status :value="props.item.success_require"></com_status>
+                </td>
+                <td>
+                    <com_status :value="props.item.error_require"></com_status>
+                </td>
+                <td>
+                    <v-icon class="mr-2" @click.stop="open_form_update(props.item)">edit</v-icon>
+                    <v-icon @click.stop="delete_selected(props.item)">delete</v-icon>
+                </td>
+            </template>
+        </v-data-table>
+
+        <div class="bg-white pa-1 text-xs-right">
+            <v-pagination :disabled="loading" v-model="page" @input=" load_data() " :length="total_pages" total-visible="9"></v-pagination>
+        </div>
+    </div>
+</template>
+
+
+<script>
+
+
+
+    var app_inside = {
+        data: function () {
+            return {
+                //表头，按字义理解，参考：https://vuetifyjs.com/zh-Hans/components/data-tables
+                headers: [
+                    { text: '接口名称', value: 'title', sortable: false },
+                    { text: '调用标识', value: 'api'},
+                    { text: 'MODULE_NAME', value: 'MODULE_NAME' },
+                    { text: 'CONTROLLER', value: 'CONTROLLER_NAME' },
+                    { text: 'ACTION', value: 'ACTION_NAME' },
+                    { text: '验证登录', value: 'login_require', sortable: false },
+                    { text: '成功记录日志', value: 'success_require', sortable: false },
+                    { text: '失败记录日志', value: 'error_require', sortable: false },
+                    { text: '操作', value: 'id', sortable: false }
+                ],
+
+                //翻页的配置，必须写
+                pagination: {
+                    rowsPerPage: -1,     //显示全部，推荐-1
+                    sortBy: null         //默认排序字段，推荐设置，descending = true && sortBy = 'id' 即 id desc
+                },
+
+                //分页的配置，可自定义
+                page_size: 20,
+                page: 1,
+                total_count:0,
+                data_list: [],
+                loading: false,
+
+                // 搜索配置，只是为了简单表单的开发方便，也可以自行定制，配合<com_search/>组件
+                // 配置说明：field，需要配置正确； value，不提交后台一定要设置 null，发送前会检测null值； list 是数组形式，可手动初始化，或指定list_source组件将发起ajax请求取回列表，需要后台给 text、value 形式的数组
+                // 在发送给后台前，会判定 type ，，后台抽取有效的 field 与 value 加入到 where 查询中，具体可见后台代码；
+                search: [{
+                    field: 'MODULE_NAME',
+                    type: 'text',
+                    label: '搜索MODULE_NAME',
+                    value: null
+                },{
+                    field: 'CONTROLLER_NAME',
+                    type: 'select',
+                    list: [],
+                    label: '过滤CONTROLLER_NAME',
+                    value: null
+                }, {
+                    field: 'api',
+                    type: 'text',
+                    label: '调用标识',
+                    value: null
+                }, {
+                    field: 'login_require',
+                    list: [{ text: '验证登录', value: 1}, { text: '不验证登录', value: 0} ],
+                    type: 'select',
+                    label: '验证登录',
+                    value: null
+                },
+                {
+                    field: 'success_require',
+                    list: [ { text: '成功记录日志', value: 1}, { text: '成功不记录日志', value: 0} ],
+                    type: 'select',
+                    label: '成功日志',
+                    value: null
+                },
+                {
+                    field: 'error_require',
+                    list: [ { text: '失败记录日志', value: 1}, { text: '失败不记录日志', value: 0} ],
+                    type: 'select',
+                    label: '失败日志',
+                    value: null
+                }
+                ],
+
+                //其他业务数据
+                //表单方面：可以放在一起，用字段控制，不过分开写比较好，比较清晰，而且有时新增和编辑的字段不同就需要更多字段控制，反而比较麻烦且不容易统一处理。
+                //新增的表单
+                form_opened_create: false,
+                form_fields_create: {
+                    title: '',
+                    api: '',
+                    MODULE_NAME: '',
+                    CONTROLLER_NAME: '',
+                    ACTION_NAME: '',
+                    login_require: true,   //1/0字段，需要转换成bool型
+                    success_require: true,
+                    error_require: true,
+                },
+
+                //编辑的表单
+                form_opened_update: false,
+                form_fields_update: {},
+
+                smart_create_opened: false,
+                smart_create_more: false,
+                smart_create: {
+                    name_space: 'loan_log',
+                    name_text: '申请处理日志',
+                    controller: 'loan',
+                    table: 'loan_log',
+                    table_fields: [],
+                    types: [
+                        { type: 'list', text: '列表', api: '', login_require: true, fields: [], selected: false},
+                        { type: 'create', text: '新增', api: '', login_require: true, fields: [], selected: false},
+                        { type: 'update', text: '编辑', api: '', login_require: true, fields: [], selected: false},
+                        { type: 'delete', text: '删除', api: '', login_require: true, fields: [], selected: false}
+                    ],
+                }
+
+
+            }
+        },
+        computed: {
+            total_pages: function () {  //分页的总页数获取，不用动
+                if (this.page_size == null || this.total_count == null) return 0;
+                return Math.ceil(this.total_count / this.page_size)
+            }
+        },
+        mounted: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        methods: {
+
+            //页面初始化，推荐统一编写，比较清晰
+            page_init: function () {
+                var _this = this;
+                _this.load_data();
+            },
+            //表格加载与方法
+            load_data: function ( reload ) {
+                var _this = this,
+                    _fields = {
+                        page: reload ? 1 : _this.page,
+                        page_size: _this.page_size,
+                        search: arguments[1]
+                    };
+                //通用方法
+                if ( typeof arguments[1] == 'undefined' ){_this.$refs.search.do_search();}
+                if ( reload ) _this.page = 1;
+                if ( _this.loading ) return false;
+                _this.loading = true;
+                //开始读取数据
+                api.send('api_list', _fields, function ( res ) {
+                    _this.total_count = res.total_count;
+                    _this.data_list = res.data_list || [];
+                    _this.$refs.search.make_search_list( 'CONTROLLER_NAME', res.controllers, true );
+                    _this.loading = false;
+                }, null, { loading_show: false} );
+            },
+
+            load_table_info: function () {
+                var _this = this;
+                if ( !_this.smart_create.name_text || !_this.smart_create.name_space || !_this.smart_create.controller || !_this.smart_create.table ){
+                    api.tips('请填写4个字段后再提交', 'error');
+                    return false;
+                }
+                api.send('get_table_info', { table:_this.smart_create.table }, function ( res ) {
+                    _this.smart_create.table_fields = res.fields || [];
+                    _this.smart_create.types.map( function ( t ) {
+                        t.api = _this.smart_create.name_space + '_' + t.type;
+                        switch ( t.type ){
+                            case 'list':
+                                t.text = _this.smart_create.name_text + '_列表';
+                                break;
+                            case 'create':
+                                t.text = _this.smart_create.name_text + '_新增';
+                                break;
+                            case 'update':
+                                t.text = _this.smart_create.name_text + '_编辑';
+                                break;
+                            case 'delete':
+                                t.text = _this.smart_create.name_text + '_删除';
+                                break;
+                            default:
+                                break;
+                        }
+                    });
+                    _this.smart_create_more = true;
+                } );
+
+            },
+            smart_submit_create: function () {
+                var _this = this,
+                    _count = 0,
+                    _ok = 0,
+                    _fields = [];
+
+                _this.smart_create.types.map( function ( t ) {
+                    if ( t.selected ){
+                        _fields.push({
+                            title: t.text,
+                            api: t.api,
+                            CONTROLLER_NAME: _this.smart_create.controller,
+                            ACTION_NAME: t.api,
+                            login_require: t.login_require ? 1 : 0
+                        });
+                        _count++;
+                    }
+                });
+                _fields.map( function ( f ) {
+                    api.send('api_create', f, function ( res ) {
+                        _ok++;
+                        is_over();
+                    } );
+                });
+                function is_over() {
+                    if ( _ok == _count ){
+                        api.tips('创建成功' + _ok + '个接口', 'success');
+                        _this.$redirect(0);
+                    }
+                }
+            },
+
+            //业务方法=======
+            open_form_create: function () {
+                var _this = this;
+                _this.form_opened_create = true;
+            },
+            form_submit_create: function () {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form_fields_create);
+
+                //创建 _fields 来进行验证、格式化，不污染表单数据
+                _fields.login_require = _fields.login_require ? 1 : 0;
+
+                if (this.$refs.ref_form_create.validate()) {
+                    api.send('api_create', _fields, function ( res ) {
+//                        _this.$refs.ref_form_create.reset();
+//                        _this.form_opened_create = false;
+                        _this.$refs.search.do_search();
+                        api.tips('创建成功，该新增不重置表单、不关闭窗口，方便连续提交', 'success');
+                    } );
+                }
+            },
+
+            open_form_update: function ( item ) {
+                var _this = this;
+                _this.form_fields_update = Object.assign({}, item);
+                _this.form_fields_update.login_require = _this.form_fields_update.login_require * 1;
+                _this.form_opened_update = true;
+            },
+            form_submit_update: function () {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form_fields_update);
+
+                //创建 _fields 来进行验证、格式化，不污染表单数据
+                _fields.login_require = _fields.login_require ? 1 : 0;
+
+                if (this.$refs.ref_form_update.validate()) {
+                    api.send('api_update', _fields, function ( res ) {
+                        _this.$refs.ref_form_update.reset();
+                        _this.form_opened_update = false;
+                        _this.$refs.search.do_search();
+                        api.tips('编辑成功', 'success');
+                    } );
+                }
+            },
+            delete_selected: function ( item ) {
+                var _this = this;
+                api.confirm('确认删除吗？', '删除后无法恢复', function () {
+                    api.send('api_delete', { id: item.id }, function ( res ) {
+                        _this.$refs.search.do_search();
+                        api.tips('删除成功', 'success');
+                    } );
+                });
+
+            }
+        },
+        template: '#app_inside'
+    }
+
+</script>

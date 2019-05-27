@@ -1,0 +1,701 @@
+
+<style type="text/css">
+</style>
+
+<template id="app_inside">
+    <div>
+        <!--页面标题栏-->
+        <v-toolbar flat color="white">
+            <v-toolbar-title class="pr-2">
+                <span>文章列表</span>
+            </v-toolbar-title>
+            <v-divider class="ml-2" inset vertical></v-divider>
+            <v-toolbar-title>
+                <span class="text-info f16">{{ classify_now && classify_now.id ? classify_now.title + ' ID:' + classify_now.id : '全部' }}</span>
+            </v-toolbar-title>
+            <v-spacer></v-spacer>
+
+            <v-btn @click="open_form_create()" color="primary" dark class="mb-2"><i class="fa fa-plus mr-1"></i> 创建新文章</v-btn>
+            <v-dialog v-model="form_opened_create" lazy persistent max-width="800px">
+                <v-card>
+                    <v-card-title>
+                        <div class="w9">
+                            <div class="title">
+                                <div>创建新文章</div>
+                            </div>
+                            <div class="f14 text-muted"></div>
+                        </div>
+                        <v-spacer></v-spacer>
+                        <i class="fa fa-close f18 text-muted" @click="form_opened_create = false"></i>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text style="min-height: 550px;">
+                        <v-form ref="ref_form_create" lazy-validation>
+                            <v-tabs grow>
+                                <v-tab v-for=" t in tab_items " ripple>{{ t }}</v-tab>
+
+                                <v-tab-item>
+                                    <v-text-field v-model="form_fields_create.title" :rules="[$com_rules.required]" label="文章标题"></v-text-field>
+                                    <v-select v-model="form_fields_create.classid" :items=" classify_list " item-text="level_text" item-value="id" label="所属栏目" :rules="[$com_rules.required]" attach></v-select>
+                                    <div class="">
+                                        <div class="text-muted f14">文章快捷属性</div>
+                                        <div class="flex_lr flex_center">
+                                            <v-checkbox label="栏目内置顶" v-model="form_fields_create.top"></v-checkbox>
+                                            <v-checkbox label="有图片" v-model="form_fields_create.pic"></v-checkbox>
+                                            <v-checkbox label="火热" v-model="form_fields_create.hot"></v-checkbox>
+                                            <v-checkbox label="标题加粗" v-model="form_fields_create.bold"></v-checkbox>
+                                        </div>
+                                    </div>
+
+                                    <v-container class="pa-0 mt-2">
+                                        <v-layout row>
+                                            <v-flex xs8 class="mr-2">
+                                                <com_upload_file type="image" label="缩略图" v-model=" form_fields_create.litpic " @input=" form_fields_create.pic = true "
+                                                                 :config="{ editable: true }" :data="{group_id: 5}"></com_upload_file>
+                                            </v-flex>
+                                            <v-flex xs4>
+                                                <v-btn @click="take_litpic()">提取内容第一张图片做缩略图</v-btn>
+                                            </v-flex>
+                                        </v-layout>
+                                    </v-container>
+
+                                    <com_ueditor v-model="form_fields_create.content" label="文章正文"></com_ueditor>
+                                    <div class="flex_lr flex_center">
+                                        <v-switch :label=" form_fields_create.auto_download ? '自动下载远程图片' : '不下载远程图片，保留原路径' " v-model="form_fields_create.auto_download"></v-switch>
+                                        <v-switch :label=" form_fields_create.auto_description ? '自动提取内容前200字做描述' : '关闭自动提取' " v-model="form_fields_create.auto_description"></v-switch>
+                                    </div>
+                                </v-tab-item>
+
+                                <v-tab-item>
+                                    <v-container class="pa-0 mt-2">
+                                        <v-layout row>
+                                            <v-flex xs6 class="mr-2">
+                                                <v-text-field v-model="form_fields_create.click" type="number" label="初始点击数"></v-text-field>
+                                            </v-flex>
+                                            <v-flex xs6>
+                                                <v-text-field v-model="form_fields_create.sorts" label="排序-小值在前"></v-text-field>
+                                            </v-flex>
+                                        </v-layout>
+                                        <v-layout row>
+                                            <v-flex xs6 class="mr-2">
+                                                <v-menu ref="menu" :nudge-right="40" lazy transition="scale-transition" offset-y full-width>
+                                                    <v-text-field slot="activator" v-model="form_fields_create.utime" label="发布日期" prepend-icon="event" readonly></v-text-field>
+                                                    <v-date-picker v-model="form_fields_create.utime" locale="zh-cn" no-title scrollable></v-date-picker>
+                                                </v-menu>
+                                            </v-flex>
+                                            <v-flex xs6>
+                                                <v-text-field class="ml-2" v-model="form_fields_create.writer" label="作者"></v-text-field>
+                                            </v-flex>
+                                        </v-layout>
+                                        <v-layout row>
+                                            <v-flex xs6 class="mr-2">
+                                                <v-select class="w5" v-model="form_fields_create.type" :items=" type_list " label="文章类型" hint="配合前端模板中 {:getArcs(classid)} 之类的快捷方法，将自动生成相应的路径"></v-select>
+                                            </v-flex>
+                                            <v-flex xs6>
+                                                <v-text-field class="ml-2" v-model="form_fields_create.url" :rules="[$com_rules.required]" label="跳转地址"
+                                                              v-if=" form_fields_create.type == 2 || form_fields_create.type == 3 "></v-text-field>
+                                            </v-flex>
+                                        </v-layout>
+                                        <v-layout row>
+                                            <v-flex xs6 class="mr-2">
+                                                <v-switch :label=" form_fields_create.status ? '正常显示' : '隐藏不输出' " v-model="form_fields_create.status"></v-switch>
+                                            </v-flex>
+                                        </v-layout>
+                                    </v-container>
+                                </v-tab-item>
+
+                                <v-tab-item>
+                                    <v-text-field v-model="form_fields_create.seotitle" label="SEO标题"></v-text-field>
+                                    <v-text-field v-model="form_fields_create.keywords" label="关键词"></v-text-field>
+                                    <v-textarea v-model="form_fields_create.description" label="描述信息"></v-textarea>
+                                </v-tab-item>
+
+                                <v-tab-item>
+                                    <v-text-field v-model="form_fields_create.arctpl" label="自定义文章模板，默认使用所属栏目设置的模板"></v-text-field>
+                                </v-tab-item>
+                            </v-tabs>
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="darken-1" flat @click="form_opened_create = false">关闭</v-btn>
+                        <v-btn color="blue darken-1" flat @click.native="form_submit_create()">提交创建</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+            <v-dialog v-model="form_opened_update" lazy persistent max-width="800px">
+                <v-card>
+                    <v-card-title>
+                        <div class="w9">
+                            <div class="title">编辑文章</div>
+                        </div>
+                        <v-spacer></v-spacer>
+                        <i class="fa fa-close f18 text-muted" @click="form_opened_update = false"></i>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text style="min-height: 550px;">
+                        <v-form ref="ref_form_update" lazy-validation>
+                            <v-tabs grow>
+                                <v-tab v-for=" t in tab_items " ripple>{{ t }}</v-tab>
+
+                                <v-tab-item>
+                                    <v-text-field v-model="form_fields_update.title" :rules="[$com_rules.required]" label="文章标题"></v-text-field>
+                                    <v-select v-model="form_fields_update.classid" :items=" classify_list " item-text="level_text" item-value="id" label="所属栏目" :rules="[$com_rules.required]" attach></v-select>
+                                    <div class="">
+                                        <div class="text-muted f14">文章快捷属性</div>
+                                        <div class="flex_lr flex_center">
+                                            <v-checkbox label="栏目内置顶" v-model="form_fields_update.top"></v-checkbox>
+                                            <v-checkbox label="有图片" v-model="form_fields_update.pic"></v-checkbox>
+                                            <v-checkbox label="火热" v-model="form_fields_update.hot"></v-checkbox>
+                                            <v-checkbox label="标题加粗" v-model="form_fields_update.bold"></v-checkbox>
+                                        </div>
+                                    </div>
+
+                                    <v-container class="pa-0 mt-2">
+                                        <v-layout row>
+                                            <v-flex xs8 class="mr-2">
+                                                <com_upload_file type="image" label="缩略图" v-model=" form_fields_update.litpic " @input=" form_fields_update.pic = true "
+                                                                 :config="{ editable: true }" :data="{group_id: 5}"></com_upload_file>
+                                            </v-flex>
+                                            <v-flex xs4>
+                                                <v-btn @click="take_litpic('edit')">提取内容第一张图片做缩略图</v-btn>
+                                            </v-flex>
+                                        </v-layout>
+                                    </v-container>
+
+                                    <com_ueditor v-model="form_fields_update.content"  label="文章正文"></com_ueditor>
+                                    <div class="flex_lr flex_center">
+                                        <v-switch :label=" form_fields_update.auto_download ? '自动下载远程图片' : '不下载远程图片，保留原路径' " v-model="form_fields_update.auto_download"></v-switch>
+                                        <v-switch label=" 编辑时无法自动提取描述 " disabled :value="false"></v-switch>
+                                    </div>
+                                </v-tab-item>
+
+                                <v-tab-item>
+                                    <v-container class="pa-0 mt-2">
+                                        <v-layout row>
+                                            <v-flex xs6 class="mr-2">
+                                                <v-text-field v-model="form_fields_update.click" type="number" label="初始点击数"></v-text-field>
+                                            </v-flex>
+                                            <v-flex xs6>
+                                                <v-text-field v-model="form_fields_update.sorts" label="排序-小值在前"></v-text-field>
+                                            </v-flex>
+                                        </v-layout>
+                                        <v-layout row>
+                                            <v-flex xs6 class="mr-2">
+                                                <v-menu ref="menu" :nudge-right="40" lazy transition="scale-transition" offset-y full-width>
+                                                    <v-text-field slot="activator" v-model="form_fields_update.utime" label="发布日期" prepend-icon="event" readonly></v-text-field>
+                                                    <v-date-picker v-model="form_fields_update.utime" locale="zh-cn" no-title scrollable></v-date-picker>
+                                                </v-menu>
+                                            </v-flex>
+                                            <v-flex xs6>
+                                                <v-text-field class="ml-2" v-model="form_fields_update.writer" label="作者"></v-text-field>
+                                            </v-flex>
+                                        </v-layout>
+                                        <v-layout row>
+                                            <v-flex xs6 class="mr-2">
+                                                <v-select class="w5" v-model="form_fields_update.type" :items=" type_list " label="文章类型" hint="配合前端模板中 {:getArcs(classid)} 之类的快捷方法，将自动生成相应的路径"></v-select>
+                                            </v-flex>
+                                            <v-flex xs6>
+                                                <v-text-field class="ml-2" v-model="form_fields_update.url" :rules="[$com_rules.required]" label="跳转地址"
+                                                              v-if=" form_fields_update.type == 2 || form_fields_update.type == 3 "></v-text-field>
+                                            </v-flex>
+                                        </v-layout>
+                                        <v-layout row>
+                                            <v-flex xs6 class="mr-2">
+                                                <v-switch :label=" form_fields_update.status ? '正常显示' : '隐藏不输出' " v-model="form_fields_update.status"></v-switch>
+                                            </v-flex>
+                                        </v-layout>
+                                    </v-container>
+                                </v-tab-item>
+
+                                <v-tab-item>
+                                    <v-text-field v-model="form_fields_update.seotitle" label="SEO标题"></v-text-field>
+                                    <v-text-field v-model="form_fields_update.keywords" label="关键词"></v-text-field>
+                                    <v-textarea v-model="form_fields_update.description" label="描述信息"></v-textarea>
+                                </v-tab-item>
+
+                                <v-tab-item>
+                                    <v-text-field v-model="form_fields_update.arctpl" label="自定义文章模板，默认使用所属栏目设置的模板"></v-text-field>
+                                </v-tab-item>
+                            </v-tabs>
+
+
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="darken-1" flat @click="form_opened_update = false">关闭</v-btn>
+                        <v-btn color="blue darken-1" flat @click.native="form_submit_update()">提交保存</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+        </v-toolbar>
+
+        <com_search ref="search" :search_config.sync=" search " @do_search=" load_data "></com_search>
+        <!--表格模板-->
+        <v-data-table v-model="selected" :headers="headers" :items="data_list" no-data-text="暂无数据" :pagination.sync="pagination" :loading="loading" hide-actions select-all>
+            <template slot="items" slot-scope="props">
+                <td><v-checkbox v-model="props.selected" primary hide-details></v-checkbox></td>
+                <td>{{ props.item.id }}</td>
+                <td>
+                    <span @click.stop="open_form_update(props.item)" class="text-primary hand">
+                        <i class="text-primary fa fa-file-image-o circle_icon" title="有图片" v-if=" props.item.pic "></i>
+                        <i class="text-warning fa fa-arrow-up circle_icon" title="置顶" v-if=" props.item.top "></i>
+                        <i class="text-danger fa fa-fire circle_icon" title="火热标识" v-if=" props.item.hot "></i>
+                        <i class="text-muted fa fa-bold circle_icon" title="标题加粗" v-if=" props.item.bold "></i>
+                        {{ props.item.title }}
+                    </span>
+                </td>
+                <td>
+                    <a :href=" $GV.BASE_URL + 'index/article_list?classid=' + props.item.classid">{{ get_classify_info(props.item.classid).title }}</a>
+                </td>
+                <td>{{ props.item.click }}</td>
+                <td>{{ props.item.utime | get_time(2) }}</td>
+                <td>
+                    <v-icon class="mr-2" @click.stop="open_form_update(props.item)">edit</v-icon>
+                    <v-icon @click.stop="delete_selected(props.item)">delete</v-icon>
+                </td>
+            </template>
+        </v-data-table>
+
+        <v-container fluid class="px-0 py-2 bg-white">
+            <v-layout row>
+                <v-flex xs12 md6>
+                    <v-menu top offset-y max-height="300" :disabled="selected.length == 0">
+                        <v-btn slot="activator" :disabled="selected.length == 0">
+                            <i class="fa fa-long-arrow-right mr-1"></i>
+                            <span>批量移动</span>
+                            <span v-if=" selected.length " class="ml-1">({{selected.length}})</span>
+                        </v-btn>
+                        <v-list>
+                            <v-list-tile v-for="(item, index) in classify_list" :key="index" @click=" batch_move( item ) ">
+                                <v-list-tile-title>{{ item.level_text }}</v-list-tile-title>
+                            </v-list-tile>
+                        </v-list>
+                    </v-menu>
+                    <v-btn color="error" @click=" batch_delete() " :disabled="selected.length == 0">
+                        <i class="fa fa-remove mr-1"></i>
+                        <span>批量删除</span>
+                        <span v-if=" selected.length " class="ml-1">({{selected.length}})</span>
+                    </v-btn>
+                </v-flex>
+                <v-flex xs6 md6 align-center justify-end>
+                    <div class="d-inlineblock f12 text-muted">总 {{this.total_count}} 条</div>
+                    <v-pagination :disabled="loading" v-model="page" @input=" load_data() " :length="total_pages" total-visible="9"></v-pagination>
+                </v-flex>
+            </v-layout>
+        </v-container>
+
+    </div>
+</template>
+
+
+<script>
+
+    var app_inside = {
+        data: function () {
+            return {
+
+                tab_items: ['基本属性', '扩展属性', 'SEO属性', '模板设置'],
+                type_list: [
+                    { text: '普通文章', value: 1},
+                    { text: '外部链接', value: 2},
+                    { text: '外部链接(打开新页)', value: 3}
+                ],
+                //表头，按字义理解，参考：https://vuetifyjs.com/zh-Hans/components/data-tables
+                headers: [
+                    { text: 'ID', value: 'id', width: '30px' },
+                    { text: '标题', value: 'title', sortable: false },
+                    { text: '栏目', value: 'classid', sortable: false, width: '150px'},
+                    { text: '浏览次数', value: 'click', width: '60px' },
+                    { text: '发布日期', value: 'utime', width: '150px' },
+                    { text: '操作', value: 'id', sortable: false, width: '120px' }
+                ],
+
+                //翻页的配置，必须写
+                pagination: {
+                    rowsPerPage: -1,     //显示全部，推荐-1
+                    sortBy: null         //默认排序字段，推荐设置，descending = true && sortBy = 'id' 即 id desc
+                },
+                selected: [],
+
+                //分页的配置，可自定义
+                page_size: 20,
+                page: 1,
+                total_count:0,
+                data_list: [],
+                loading: false,
+
+                // 搜索配置，只是为了简单表单的开发方便，也可以自行定制，配合<com_search/>组件
+                // 配置说明：field，需要配置正确； value，不提交后台一定要设置 null，发送前会检测null值； list 是数组形式，可手动初始化，或指定list_source组件将发起ajax请求取回列表，需要后台给 text、value 形式的数组
+                // 在发送给后台前，会判定 type ，，后台抽取有效的 field 与 value 加入到 where 查询中，具体可见后台代码；
+                search: [{
+                        field: 'classid',
+                        type: 'select',
+                        list: [],
+                        label: '过滤栏目',
+                        value: null
+                    }, {
+                        field: 'title',
+                        type: 'text',
+                        label: '文章标题',
+                        value: null
+                    }
+                ],
+
+                //其他业务数据
+                classid: parseInt(url('?classid')) || 0,
+                classify_list: [],
+
+                //表单方面：可以放在一起，用字段控制，不过分开写比较好，比较清晰，而且有时新增和编辑的字段不同就需要更多字段控制，反而比较麻烦且不容易统一处理。
+                //新增的表单
+                form_opened_create: false,
+                form_fields_create: {
+                    title: '',
+                    classid: '',
+                    type: 1,
+                    url: '',
+                    content: '',
+                    litpic: '',
+                    status: true,
+                    auto_download: true,
+                    auto_description: true,
+
+                    hot: false,
+                    top: false,
+                    pic: false,
+                    bold: false,
+
+                    utime: getTime(7),
+                    writer: '',
+                    click: 0,
+                    sorts: 0,
+
+                    seotitle: '',
+                    keywords: '',
+                    description: '',
+                    arctpl: ''
+                },
+
+                //编辑的表单
+                form_opened_update: false,
+                form_fields_update: {}
+            }
+        },
+        computed: {
+            total_pages: function () {  //分页的总页数获取，不用动
+                if (this.page_size == null || this.total_count == null) return 0;
+                return Math.ceil(this.total_count / this.page_size)
+            },
+            classify_now: function () {
+                var _this = this,
+                    _classid = _this.classid;
+                if ( _classid == 0 || _this.classify_list.length == 0 ){
+                    return { title: _classid, id: _classid };
+                }
+                return _this.get_classify_info(_classid);
+            }
+        },
+        mounted: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        methods: {
+
+            //页面初始化，推荐统一编写，比较清晰
+            page_init: function () {
+                var _this = this;
+
+                if ( _this.classid ){
+                    _this.search[0].value = _this.classid;
+                }
+                _this.$refs.search.do_search();
+//                _this.load_data();
+                _this.load_classify();
+            },
+            //表格加载与方法
+            load_data: function ( reload ) {
+                var _this = this,
+                    _fields = {
+                        page: reload ? 1 : _this.page,
+                        page_size: _this.page_size,
+                        search: arguments[1]
+                    };
+                //通用方法
+                if ( reload ) _this.page = 1;
+                if ( _this.loading ) return false;
+                _this.loading = true;
+                //开始读取数据
+                api.send('article_list', _fields, function ( res ) {
+                    _this.total_count = res.total_count;
+                    _this.data_list = res.data_list || [];
+                    _this.loading = false;
+                }, null, { loading_show: false} );
+            },
+            load_classify: function () {
+                var _this = this;
+                api.send('classify_list', {}, function ( res ) {
+                    var _tree_list = _this.classify_tree( res ),
+                        _search_list = [{ text: '全部', value: null}];
+                    _tree_list.map( function ( c ) {
+                        _search_list.push({
+                            text: c.level_text,
+                            value: c.id
+                        })
+                    });
+                    _this.classify_list = _tree_list;
+                    _this.search[0].list = _search_list;
+                }, null, { loading_show: false} );
+            },
+            get_classify_info: function (id) {
+                var _this = this,
+                    res = { title: id, id: id };
+                if ( _this.classify_list.length ){
+                    for ( var i=0; i<_this.classify_list.length; i++){
+                        if ( _this.classify_list[i].id == id ){
+                            res = _this.classify_list[i]
+                        }
+                    }
+                }
+                return res;
+            },
+            get_classify_name: function ( id ) {
+                var _this = this;
+                if ( !_this.classify_list.length ){
+                    return id;
+                }
+                for ( var i=0; i<_this.classify_list.length; i++){
+                    if ( _this.classify_list[i].id == id ){
+                        return _this.classify_list[i].title
+                    }
+                }
+            },
+            //业务方法=======
+            classify_tree: function ( _data_list ) {
+                var tree = [],
+                    _while_count = 0, //防止死循环
+                    list = JSON.parse(JSON.stringify( _data_list ));
+                if ( _data_list.length == 0 ){
+                    return [];
+                }
+                tree = listToTree('id', 'pid', list);
+
+                function check() {
+                    var _pass = true;
+                    tree.map( function ( t ) {
+                        if ( typeof t.child != 'undefined' && t.child.length > 0 ) _pass = false;
+                    });
+                    return _pass;
+                }
+
+                while( !check() && _while_count < 99 ){
+                    if ( _while_count == 0 ){
+                        tree.sort(function (a,b) {
+                            return a.sorts - b.sorts;
+                        });
+                    }
+                    for( var i = 0; i<tree.length; i++){
+                        if ( tree[i].child && tree[i].child.length > 0 ){
+                            var _sub = tree[i].child.slice(),
+                                _level = tree[i].level || 0;
+                            tree[i].child = [];
+                            var __i = 1;
+                            _sub.sort(function (a,b) {
+                                return a.sorts - b.sorts;
+                            });
+                            _sub.map( function ( s ) {
+                                s.level = _level + 1;
+                                tree.splice( i + __i , 0, s );
+                                __i++;
+                            });
+                            break;
+                        }
+                    }
+                    _while_count++;
+                }
+
+                tree.map( function ( _l ) {
+                    if ( !_l.level  ){
+                        _l.level = 0;
+                    }
+                    var _str = '';
+                    for( var i = 0; i < _l.level; i++ ){
+                        _str += '　　'
+                    }
+                    _str = _str + '└─';
+                    _l.level_text = _str + ' ' + _l.title;
+                });
+                return tree;
+            },
+
+            //业务方法=======
+            take_litpic: function ( type ) {
+                var _this = this,
+                    _item = ( type == 'edit' ? _this.form_fields_update : _this.form_fields_create ),
+                    _src = '';
+
+                if ( _item.content ){
+                    var imgReg = /<img.*?(?:>|\/>)/gi,
+                        srcReg = /src=[\'\"]?([^\'\"]*)[\'\"]?/i,
+                        arr = _item.content.match(imgReg),
+                        arr2;
+                    if ( arr && arr.length > 0 ){
+                        arr2 = arr[0].match(srcReg);
+                        _src = arr2[1];
+                    }
+                }
+                if ( _src ){
+                    _item.litpic = _src;
+                }
+            },
+            open_form_create: function () {
+                var _this = this;
+                if ( _this.search[0].value ){
+                    _this.form_fields_create.classid = _this.search[0].value;
+                }
+                _this.form_opened_create = true;
+            },
+            form_submit_create: function () {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form_fields_create);
+
+                //创建 _fields 来进行验证、格式化，不污染表单数据
+                if ( _fields.auto_description && !_fields.description ){
+                    _fields.description = Substr(_fields.content.replace(/<(style|script|iframe)[^>]*?>[\s\S]+?<\/\1\s*>/gi,'').replace(/<[^>]+?>/g,'').replace(/\s+/g,' ').replace(/ /g,' ').replace(/>/g,' '), 200);
+                }
+
+                _fields.utime = getTimeStamp(_fields.utime);
+                _fields.status = _fields.status ? 1 : 0;
+                _fields.hot = _fields.hot ? 1 : 0;
+                _fields.top = _fields.top ? 1 : 0;
+                _fields.pic = _fields.pic ? 1 : 0;
+                _fields.bold = _fields.bold ? 1 : 0;
+                _fields.auto_download = _fields.auto_download ? 1 : 0;
+                _fields.auto_description = undefined;
+
+                if (this.$refs.ref_form_create.validate()) {
+                    api.send('article_create', _fields, function ( res ) {
+                        _this.form_fields_create = {
+                            title: '',
+                            classid: '',
+                            type: 1,
+                            url: '',
+                            content: '',
+                            litpic: '',
+                            status: true,
+                            auto_download: true,
+                            auto_description: true,
+
+                            hot: false,
+                            top: false,
+                            pic: false,
+                            bold: false,
+
+                            utime: getTime(7),
+                            writer: '',
+                            click: 0,
+                            sorts: 0,
+
+                            seotitle: '',
+                            keywords: '',
+                            description: '',
+                            arctpl: ''
+                        };
+                        _this.form_opened_create = false;
+                        _this.$refs.search.do_search();
+                        api.tips('创建成功', 'success');
+                    } );
+                }
+            },
+
+            open_form_update: function ( item ) {
+                var _this = this;
+                _this.form_fields_update = Object.assign({}, item);
+
+                _this.form_fields_update.utime = getTime(7, _this.form_fields_update.utime);
+                _this.form_fields_update.status = !!_this.form_fields_update.status;
+                _this.form_fields_update.hot = !!_this.form_fields_update.hot;
+                _this.form_fields_update.top = !!_this.form_fields_update.top;
+                _this.form_fields_update.pic = !!_this.form_fields_update.pic;
+                _this.form_fields_update.bold = !!_this.form_fields_update.bold;
+                _this.form_fields_update.auto_download = true;
+                _this.form_opened_update = true;
+            },
+            form_submit_update: function () {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form_fields_update);
+
+                //创建 _fields 来进行验证、格式化，不污染表单数据
+
+                _fields.utime = getTimeStamp(_fields.utime);
+                _fields.status = _fields.status ? 1 : 0;
+                _fields.hot = _fields.hot ? 1 : 0;
+                _fields.top = _fields.top ? 1 : 0;
+                _fields.pic = _fields.pic ? 1 : 0;
+                _fields.bold = _fields.bold ? 1 : 0;
+                _fields.auto_download = _fields.auto_download ? 1 : 0;
+
+                if (this.$refs.ref_form_update.validate()) {
+                    api.send('article_update', _fields, function ( res ) {
+                        _this.$refs.ref_form_update.reset();
+                        _this.form_opened_update = false;
+                        _this.$refs.search.do_search();
+                        api.tips('编辑成功', 'success');
+                    } );
+                }
+            },
+            delete_selected: function ( item ) {
+                var _this = this;
+                api.confirm('确认删除吗？', '删除后无法恢复', function () {
+                    api.send('article_delete', { id: item.id }, function ( res ) {
+                        _this.$refs.search.do_search();
+                        api.tips('删除成功', 'success');
+                    } );
+                });
+            },
+            batch_move: function ( group ) {
+                var _this = this,
+                    _ids = [];
+
+                this.selected.map( function ( s ) {
+                    _ids.push( s.id );
+                });
+                if ( !_ids.length || !group.id ){
+                    api.tips('先选择再操作', 'cyan');
+                    return false;
+                }
+                api.send('article_move', {
+                    classid: group.id,
+                    ids: _ids
+                }, function ( res ) {
+                    _this.$refs.search.do_search();
+                    api.tips('成功移动了 '+res+' 条记录', 'success');
+                } );
+            },
+
+            batch_delete: function () {
+                var _this = this,
+                    _ids = [];
+                this.selected.map( function ( s ) {
+                    _ids.push( s.id );
+                });
+                if ( !_ids.length ){
+                    api.tips('先选择再操作', 'cyan');
+                    return false;
+                }
+                api.confirm('确认删除吗？', '删除后无法恢复', function () {
+                    api.send('article_delete', {
+                        id: _ids
+                    }, function ( res ) {
+                        _this.$refs.search.do_search();
+                        api.tips('成功删除了'+res+'条记录', 'success');
+                    } );
+                });
+            },
+        },
+        template: '#app_inside'
+    }
+
+</script>

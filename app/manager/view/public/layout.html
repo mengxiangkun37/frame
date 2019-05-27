@@ -1,0 +1,219 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>{$pagetitle}</title>
+<link rel="icon" type="image/x-icon" href="{:SC('site_logo_mini')}" />
+{include file="public/cssjs" /}
+</head>
+<body>
+
+{include file="public/vue_template" /}
+
+<div id="content_body">
+	<app_framework></app_framework>
+</div>
+
+<template id="app_framework">
+	<v-app>
+		<v-navigation-drawer :clipped="$vuetify.breakpoint.lgAndUp" v-model="navigation_opened" value="true" fixed app>
+			<v-list class="py-0" dense expand>
+				<template v-for="item in navigation_list">
+					<v-list-group v-if=" item.children " :prepend-icon=" item.icon " v-model="item.opened">
+						<v-list-tile slot="activator"><v-list-tile-title class="text-sub">{{item.title}}</v-list-tile-title></v-list-tile>
+						<v-list-tile ripple v-for="(child, i) in item.children" :key="i" :href=" child.url " :color="child.active ? 'blue' : ''" >
+							<v-list-tile-action></v-list-tile-action>
+							<v-list-tile-content><v-list-tile-title v-text="child.title"></v-list-tile-title></v-list-tile-content>
+							<v-list-tile-action><v-icon v-if="child.icon" v-text="child.icon" :color="child.active ? 'blue' : ''" ></v-icon></v-list-tile-action>
+						</v-list-tile>
+					</v-list-group>
+					<v-list-tile v-else ripple>
+						<v-list-tile-action><v-icon>{{item.icon}}</v-icon></v-list-tile-action>
+						<v-list-tile-title >{{item.title}}</v-list-tile-title>
+					</v-list-tile>
+				</template>
+			</v-list>
+		</v-navigation-drawer>
+
+		<v-toolbar :clipped-left="$vuetify.breakpoint.lgAndUp" color="blue darken-3" dark app fixed>
+			<v-toolbar-title>
+				<v-toolbar-side-icon @click.stop="navigation_opened = !navigation_opened"></v-toolbar-side-icon>
+				<a :href=" $url('index/index') " class="hidden-sm-and-down text-white">{:SC('system_name')}</a>
+			</v-toolbar-title>
+			<v-spacer></v-spacer>
+
+			<v-btn icon large :href=" $url('index/index') "><v-icon>home</v-icon></v-btn>
+			<v-btn icon large :href=" $url('index/help') "><v-icon>fa fa-question</v-icon></v-btn>
+			<v-btn icon large @click="clear_cache"><v-icon>fa fa-trash</v-icon></v-btn>
+
+			<v-menu transition="slide-y-transition" offset-y max-width="300">
+				<v-btn slot="activator" large icon><v-icon>fa fa-user</v-icon></v-btn>
+				<v-list width="300">
+					<v-list-tile @click="edit_user_info()">
+						<v-list-tile-content>
+							<v-list-tile-title>修改个人信息</v-list-tile-title>
+							<v-list-tile-sub-title>修改密码</v-list-tile-sub-title>
+						</v-list-tile-content>
+						<v-list-tile-action>
+							<v-icon color="grey lighten-1">person_pin</v-icon>
+						</v-list-tile-action>
+					</v-list-tile>
+					<v-divider class="my-2"></v-divider>
+					<v-list-tile @click="logout">
+						<v-list-tile-content>
+							<v-list-tile-title>退出登录</v-list-tile-title>
+							<v-list-tile-sub-title>可切换账号</v-list-tile-sub-title>
+						</v-list-tile-content>
+						<v-list-tile-action>
+							<v-icon color="grey lighten-1">exit_to_app</v-icon>
+						</v-list-tile-action>
+					</v-list-tile>
+				</v-list>
+			</v-menu>
+
+			<v-btn icon large><v-avatar size="32px" tile><img src="{:SC('site_logo_mini')}"></v-avatar></v-btn>
+		</v-toolbar>
+
+		<v-content>
+			<app_inside></app_inside>
+		</v-content>
+
+
+		<v-dialog v-model="edit_user_form" max-width="500px" lazy>
+			<v-card>
+				<v-card-title>
+					<div>
+						<div class="title">修改个人信息</div>
+					</div>
+				</v-card-title>
+				<v-divider></v-divider>
+				<v-card-text>
+					<v-form ref="ref_form_update" lazy-validation>
+						<com_upload_file type="image" label="头像" v-model=" user_info.avatar " :config="{ editable: true }" :data="{group_id: 5}"></com_upload_file>
+						<v-text-field v-model="user_info.username" :rules="[$com_rules.required]" counter label="登录名"></v-text-field>
+						<v-text-field v-model="user_info.password" :append-icon="form_show_update_password ? 'visibility_off' : 'visibility'" :type="form_show_update_password ? 'text' : 'password'" label="留空则不修改密码，格式：6-10英文+数字" counter @click:append="form_show_update_password = !form_show_update_password"></v-text-field>
+						<v-text-field v-model="user_info.name" :rules="[$com_rules.required]" counter label="称呼"></v-text-field>
+						<v-text-field v-model="user_info.phone" counter label="手机号，选填"></v-text-field>
+						<v-checkbox v-model="user_info.status" label="可以登录"></v-checkbox>
+					</v-form>
+				</v-card-text>
+				<v-card-actions>
+					<v-spacer></v-spacer>
+					<v-btn color="blue darken-1" flat @click.native="submit_edit_user()">提交保存</v-btn>
+				</v-card-actions>
+			</v-card>
+		</v-dialog>
+
+	</v-app>
+</template>
+
+{__CONTENT__}
+
+
+{include file="common@common/api_fun" /}
+
+<script>
+
+    var app_framework = {
+        template: '#app_framework',
+        data: function () {
+			return {
+                navigation_opened: null,
+                navigation_list: [],
+                edit_user_form: false,
+                user_info: {},
+                form_show_update_password: false
+            }
+        },
+        created: function () {
+            var _this = this;
+            _this.build_navigation();
+        },
+        components: {
+            app_inside: typeof app_inside == 'undefined' ? {template: '<div>无可用组件，请抛出【app_inside】的变量</div>'} : app_inside,
+        },
+        mounted: function () {
+            var _this = this;
+        },
+        methods: {
+            build_navigation: function () {
+                var _this = this;
+                api.send('get_navigation', { change_url: true }, function( res ){
+                    var _nav = res,
+                        _top = _nav.filter(function ( n ) {
+                            return n.pid === 0;
+                        });
+                    _top.map( function ( t ) {
+                        t.opened = false;
+                        t.children = [];
+                        _nav.map( function ( n ) {
+                            if ( n.pid == t.id ){
+                                if ( n.url && n.url == url('path').toLowerCase() ){
+                                    t.opened = true;
+                                    n.active = true;
+                                }
+                                t.children.push(n);
+                            }
+                        });
+                    });
+                    _this.navigation_list = _top;
+                }, null, { loading_show: false});
+            },
+            logout: function () {
+                var _this = this;
+                api.confirm('确认退出吗？', '', function () {
+                    api.send('logout', { }, function ( res ) {
+                        api.tips('已成功退出…', 'success');
+                        setTimeout( function () {
+                            redirect( _this.$GV.LOGIN_URL );
+                        }, 1000)
+                    } );
+                });
+            },
+            clear_cache: function () {
+                var _this = this;
+                api.confirm('确认清理缓存吗？', '一般在修改配置、调整网站信息后，需要清理一下', function () {
+                    api.send('clear_cache', { }, function ( res ) {
+                        api.tips('清理完毕', 'success');
+                        setTimeout( function () {
+                            _this.$redirect(0);
+                        }, 1000)
+                    } );
+                });
+            },
+            edit_user_info: function () {
+				var _this = this;
+				api.send('user_info', '', function ( res ) {
+					_this.user_info = res;
+					_this.edit_user_form = true;
+                });
+            },
+            submit_edit_user: function () {
+                var _this = this,
+                    _fields = Object.assign({}, _this.user_info);
+                //创建 _fields 来进行验证、格式化，不污染表单数据
+                if (this.$refs.ref_form_update.validate()) {
+                    api.send('myself_update', _fields, function ( res ) {
+                        _this.edit_user_form = false;
+                        api.tips('修改成功', 'success');
+                    } );
+                }
+            }
+        }
+	};
+
+    var V_main = new Vue({
+		el: '#content_body',
+        components: {
+            app_framework: app_framework
+        }
+	});
+
+
+    //事件通讯桥
+    var bus = new Vue();
+
+</script>
+
+</body>
+</html>

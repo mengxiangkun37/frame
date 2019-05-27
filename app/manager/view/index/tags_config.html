@@ -1,0 +1,131 @@
+<style type="text/css">
+
+</style>
+
+<template id="app_inside">
+    <div>
+        <!--页面标题栏-->
+        <v-toolbar flat color="white">
+            <v-toolbar-title>配置组管理 </v-toolbar-title>
+            <v-divider class="mx-2" inset vertical></v-divider>
+            <v-menu :close-on-content-click="false" offset-y slide-x max-width="500">
+                <v-btn slot="activator" color="warning" dark>
+                    <v-icon class="mr-2">help_outline</v-icon> 帮助
+                </v-btn>
+                <div class="pa-2 bg-white">
+                    <ol>
+                        <li>管理列表型配置，如：状态组、简单分组、banner列表等</li>
+                        <li>特性：组结构，item对应单值，可排序，删除为置0，非真删</li>
+                        <li>使用方法：API控制器中使用 com_get_tags，返回数组格式列表 </li>
+                        <li>后台Vue组件调用方法：&lt;com_tags_manager&gt;&lt;/com_tags_manager&gt;，支持直接调用，嵌入 v-dialog 中</li>
+                        <li>PHP模板页中使用：GT('group_name')获取配置组，GT('1133')获取1133号tag的title值，GT('1133.pic')获取pic值，GT('1133.*')获取全部值</li>
+                    </ol>
+                </div>
+            </v-menu>
+            <v-spacer></v-spacer>
+            <v-btn @click=" tags_group_create " color="primary"><i class="fa fa-plus-square mr-1"></i> 创建配置组</v-btn>
+        </v-toolbar>
+
+        <v-container grid-list-lg fluid class="bg-white">
+            <v-layout row wrap>
+                <v-flex v-for="group in data_list" xs4 md3 :key="group">
+                    <com_tags_manage :group=" group "></com_tags_manage>
+                </v-flex>
+            </v-layout>
+        </v-container>
+
+        <v-dialog v-model="form_opened_create" max-width="500px" lazy>
+            <v-card>
+                <v-card-title><div class="title">创建新的配置组</div></v-card-title>
+                <v-divider></v-divider>
+                <v-card-text>
+                    <v-form ref="ref_form_update" lazy-validation>
+                        <v-text-field v-model="new_group" :rules="[$com_rules.required,$com_rules.right_username]" label="配置分组名称"></v-text-field>
+                    </v-form>
+                </v-card-text>
+                <v-card-actions>
+                    <v-spacer></v-spacer>
+                    <v-btn color="blue darken-1" flat @click.native="form_submit_create">提交保存</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
+    </div>
+</template>
+
+
+
+
+<script>
+
+    var app_inside = {
+        data: function () {
+            return {
+                allow_group: [],
+                form_opened_create: false,
+                new_group: '',
+                data_list: [],
+                loading: false,
+                difficulty_show: false
+            }
+        },
+        mounted: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        methods: {
+            //页面初始化，推荐统一编写，比较清晰
+            page_init: function () {
+                var _this = this;
+                _this.load_data();
+            },
+            //表格加载与方法
+            load_data: function () {
+                var _this = this;
+                //开始读取数据
+                api.send('tags_groups', {}, function (res) {
+                    _this.data_list = res;
+                }, null, { loading_show: false });
+            },
+
+            //业务方法=======
+            tags_group_create: function () {
+                var _this = this;
+
+                _this.form_opened_create = true;
+            },
+            form_submit_create: function () {
+                var _this = this,
+                    _fields = {
+                        group: _this.new_group,
+                        title: '初始值，可自行修改'
+                    },
+                    has_created = false;
+
+                _this.data_list.map( function ( g ) {
+                    if ( g == _this.new_group ){
+                        has_created = true;
+                    }
+                });
+
+                if ( has_created ){
+                    api.tips( '分组已存在，请更换分组名', 'error');
+                    return false;
+                }
+
+                if (this.$refs.ref_form_update.validate()) {
+                    api.send( 'tags_create' , _fields, function ( res ) {
+                        _this.form_opened_update = false;
+                        _this.load_data();
+                        api.tips( '创建成功', 'success');
+                    } );
+                }
+            }
+
+
+
+        },
+        template: '#app_inside'
+    }
+
+</script>

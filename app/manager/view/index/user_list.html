@@ -1,0 +1,277 @@
+
+<style type="text/css">
+
+</style>
+
+<template id="app_inside">
+    <div>
+        <!--页面标题栏-->
+        <v-toolbar flat color="white">
+            <v-toolbar-title>用户列表</v-toolbar-title>
+            <v-divider class="mx-2" inset vertical></v-divider>
+            <v-menu :close-on-content-click="false" offset-y slide-x max-width="500">
+                <v-btn slot="activator" color="warning" dark><v-icon class="mr-2">help_outline</v-icon> 帮助</v-btn>
+                <div class="pa-2 bg-white">
+                    <ol>
+                        <li>新创建的用户没有任何权限，需要在用户组管理中选择该用户才有相应的权限</li>
+                        <li>用户ID为1的超级管理员不可删除</li>
+                    </ol>
+                </div>
+            </v-menu>
+            <v-spacer></v-spacer>
+
+            <v-btn @click="open_form_create()" color="primary" dark class="mb-2"><i class="fa fa-user-plus mr-1"></i> 创建新用户</v-btn>
+            <v-dialog v-model="form_opened_create" max-width="500px" lazy>
+                <v-card>
+                    <v-card-title>
+                        <div>
+                            <div class="title">创建新用户</div>
+                        </div>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text>
+                        <v-form ref="ref_form_create" lazy-validation>
+                            <com_upload_file type="image" label="头像" v-model=" form_fields_create.avatar " :config="{ editable: true }" :data="{group_id: 5}"></com_upload_file>
+                            <v-text-field v-model="form_fields_create.username" :rules="[$com_rules.required, $com_rules.min]" counter label="登录名"></v-text-field>
+                            <v-text-field v-model="form_fields_create.password" :rules="[$com_rules.required]" :append-icon="form_show_create_password ? 'visibility_off' : 'visibility'" :type="form_show_create_password ? 'text' : 'password'" label="登录密码，格式：6-10英文+数字" counter @click:append="form_show_create_password = !form_show_create_password"></v-text-field>
+                            <v-text-field v-model="form_fields_create.name" :rules="[$com_rules.required]" counter label="称呼"></v-text-field>
+                            <v-text-field v-model="form_fields_create.phone" counter label="手机号，选填"></v-text-field>
+                            <v-checkbox v-model="form_fields_create.status" label="可以登录"></v-checkbox>
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="blue darken-1" flat @click.native="form_submit_create()">提交创建</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+            <v-dialog v-model="form_opened_update" max-width="500px" lazy>
+                <v-card>
+                    <v-card-title>
+                        <div>
+                            <div class="title">编辑用户</div>
+                        </div>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text>
+                        <v-form ref="ref_form_update" lazy-validation>
+                            <com_upload_file type="image" label="头像" v-model=" form_fields_update.avatar " :config="{ editable: true }" :data="{group_id: 5}"></com_upload_file>
+                            <v-text-field v-model="form_fields_update.username" :rules="[$com_rules.required]" counter label="登录名"></v-text-field>
+                            <v-text-field v-model="form_fields_update.password" :append-icon="form_show_update_password ? 'visibility_off' : 'visibility'" :type="form_show_update_password ? 'text' : 'password'" label="留空则不修改密码，格式：6-10英文+数字" counter @click:append="form_show_update_password = !form_show_update_password"></v-text-field>
+                            <v-text-field v-model="form_fields_update.name" :rules="[$com_rules.required]" counter label="称呼"></v-text-field>
+                            <v-text-field v-model="form_fields_update.phone" counter label="手机号，选填"></v-text-field>
+                            <v-checkbox v-model="form_fields_update.status" label="可以登录"></v-checkbox>
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="blue darken-1" flat @click.native="form_submit_update()">提交保存</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+        </v-toolbar>
+
+     
+        <com_search ref="search" :search_config.sync=" search " @do_search=" load_data "></com_search>
+        <!--表格模板-->
+        <v-data-table no-data-text="暂无数据" :headers="headers" :items="data_list" :pagination.sync="pagination" :loading="loading" hide-actions>
+            <template slot="items" slot-scope="props">
+                <td>{{ props.item.id }}</td>
+                <td>
+                    <v-avatar :tile="true" :size="40" color="grey lighten-4">
+                        <img :src="props.item.avatar || $GV.DEFAULT_IMG.avatar ">
+                    </v-avatar>
+                </td>
+                <td>{{ props.item.username }}</td>
+                <td>{{ props.item.name }}</td>
+                <td>{{ props.item.last_login_time | get_time(2) }}</td>
+                <td>{{ props.item.last_login_ip }}</td>
+                <td>
+                    <v-chip v-if="props.item.status == 1" small color="green" text-color="white">正常</v-chip>
+                    <v-chip v-if="props.item.status == 0" small color="red" text-color="white">禁用</v-chip>
+                </td>
+                <td>
+                    <v-icon class="mr-2" @click.stop="open_form_update(props.item)">edit</v-icon>
+                    <v-icon @click.stop="delete_selected(props.item)">delete</v-icon>
+                </td>
+            </template>
+        </v-data-table>
+        <div class="bg-white pa-1 text-xs-right">
+            <v-pagination :disabled="loading" v-model="page" @input=" load_data() " :length="total_pages" total-visible="9"></v-pagination>
+        </div>
+    </div>
+</template>
+
+
+<script>
+
+
+
+    var app_inside = {
+        data: function () {
+            return {
+
+                //表头，按字义理解，参考：https://vuetifyjs.com/zh-Hans/components/data-tables
+                headers: [
+                    { text: 'ID', value: 'id',sortable: false },
+                    { text: '头像', value: 'avatar',sortable: false },
+                    { text: '登录名', value: 'username'},
+                    { text: '姓名', value: 'name', sortable: false },
+                    { text: '最后登录时间', value: 'last_login_time' },
+                    { text: '最后登录IP', value: 'last_login_ip', sortable: false },
+                    { text: '状态', value: 'status' },
+                    { text: '操作', value: 'id', sortable: false }
+                ],
+
+                //翻页的配置，必须写
+                pagination: {
+                    rowsPerPage: -1,     //显示全部，推荐-1
+                    sortBy: null        //默认排序字段，推荐设置
+                },
+
+                //分页的配置，可自定义
+                page_size: 20,
+                page: 1,
+                total_count:0,
+                data_list: [],
+                loading: false,
+
+                // 搜索配置，只是为了简单表单的开发方便，也可以自行定制，配合<com_search/>组件
+                // 配置说明：field，需要配置正确； value，不提交后台一定要设置 null，发送前会检测null值； list 是数组形式，可手动初始化，或指定list_source组件将发起ajax请求取回列表，需要后台给 text、value 形式的数组
+                // 在发送给后台前，会判定 type ，，后台抽取有效的 field 与 value 加入到 where 查询中，具体可见后台代码；
+                search: [{
+                    field: 'username',
+                    type: 'text',
+                    label: '搜索登录名',
+                    value: null
+                }, {
+                    field: 'name',
+                    type: 'text',
+                    label: '搜索姓名',
+                    value: null
+                }, {
+                    field: 'status',
+                    list: [ { text: '正常', value: 1}, { text: '禁用', value: 0} ],
+                    type: 'select',
+                    label: '状态',
+                    value: null
+                }],
+
+                //其他业务数据
+
+                //表单方面：可以放在一起，用字段控制，不过分开写比较好，比较清晰，而且有时新增和编辑的字段不同就需要更多字段控制，反而比较麻烦且不容易统一处理。
+                //新增的表单
+                form_opened_create: false,
+                form_show_create_password: false,
+                form_fields_create: {
+                    name: '',
+                    password: '',
+                    username: '',
+                    avatar: '',
+                    phone: '',
+                    status: true    //1/0字段，需要转换成bool型
+                },
+
+                //编辑的表单
+                form_opened_update: false,
+                form_show_update_password: false,
+                form_fields_update: {}
+            }
+        },
+        computed: {
+            //分页的总页数获取，不用动
+            total_pages: function () {
+                if (this.page_size == null || this.total_count == null) return 0;
+                return Math.ceil(this.total_count / this.page_size)
+            }
+        },
+        mounted: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        methods: {
+
+            //页面初始化，推荐统一编写，比较清晰
+            page_init: function () {
+                var _this = this;
+                _this.load_data();
+            },
+
+            //表格加载与方法
+            load_data: function ( reload ) {
+                var _this = this,
+                    _fields = {
+                        page: reload ? 1 : _this.page,
+                        page_size: _this.page_size,
+                        search: arguments[1]
+                    };
+                //通用方法
+                if (typeof arguments[1] == 'undefined') { _this.$nextTick(function () { _this.$refs.search.do_search(); }); return false; }
+                if ( reload ) _this.page = 1;
+                if ( _this.loading ) return false;
+                _this.loading = true;
+                //开始读取数据
+                api.send('user_list', _fields, function ( res ) {
+                    _this.total_count = res.total_count;
+                    _this.data_list = res.data_list || [];
+                    _this.loading = false;
+                }, null, { loading_show: false} );
+            },
+
+            //业务方法=======
+            open_form_create: function () {
+                var _this = this;
+                _this.form_opened_create = true;
+            },
+            form_submit_create: function () {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form_fields_create);
+
+                //创建 _fields 来进行验证、格式化，不污染表单数据
+                _fields.status = _fields.status ? 1 : 0;
+
+                if (this.$refs.ref_form_create.validate()) {
+                    api.send('user_create', _fields, function ( res ) {
+                        _this.$refs.ref_form_create.reset();
+                        _this.form_opened_create = false;
+                        _this.$refs.search.do_search();
+                        api.tips('创建成功', 'success');
+                    } );
+                }
+            },
+
+            open_form_update: function ( item ) {
+                var _this = this;
+                _this.form_fields_update = Object.assign({}, item);
+                _this.form_opened_update = true;
+            },
+            form_submit_update: function () {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form_fields_update);
+                //创建 _fields 来进行验证、格式化，不污染表单数据
+                _fields.status = _fields.status ? 1 : 0;
+                if (this.$refs.ref_form_update.validate()) {
+                    api.send('user_update', _fields, function ( res ) {
+                        _this.$refs.ref_form_update.reset();
+                        _this.form_opened_update = false;
+                        _this.$refs.search.do_search();
+                        api.tips('编辑成功', 'success');
+                    } );
+                }
+            },
+            delete_selected: function ( item ) {
+                var _this = this;
+                api.confirm('确认删除吗？', '删除后无法恢复', function () {
+                    api.send('user_delete', { id: item.id }, function ( res ) {
+                        _this.$refs.search.do_search();
+                        api.tips('删除成功', 'success');
+                    } );
+                });
+            }
+        },
+        template: '#app_inside'
+    }
+
+</script>

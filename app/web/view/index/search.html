@@ -1,0 +1,197 @@
+<style>
+
+
+    .company_apply, .personal_apply {  width: 152px; height: 128px; display: inline-block;  color: #eee; padding-top: 25px; border: 1px solid #ddd; border-radius: 5px; text-align: center; }
+    .company_apply:hover, .personal_apply:hover { color: #fff; box-shadow: 1px 1px 10px rgba(0,0,0,.3) }
+
+    .personal_apply {  background: hsl(74, 53%, 49%);  }
+    .company_apply {  background: #33b4f4;}
+
+
+</style>
+
+<template id="app_inside">
+    <div class="fully mt-3">
+        <el-row>
+            <el-col :span="7">
+                <div class="mb-3">
+                    <el-row>
+                        <el-col :span="12">
+                            <a :href=" $url('index/reg', {type: 1} ) " class="personal_apply">
+                                <i class="fa fa-user-circle-o fa-4x"></i>
+                                <div class="f17 mt-2"> 单位志愿者申请 </div>
+                            </a>
+                        </el-col>
+                        <el-col :span="12" class="text-right">
+                            <a :href=" $url('index/reg', {type: 2} ) " class="company_apply">
+                                <i class="fa fa-users fa-4x"></i>
+                                <div class="f17 mt-2"> 单位志愿者申请 </div>
+                            </a>
+                        </el-col>
+                    </el-row>
+                </div>
+                <com_left_news></com_left_news>
+            </el-col>
+            <el-col :span="16" :offset="1">
+                <el-card shadow="never">
+                    <el-row :gutter="20">
+                        <el-col :span="10">
+                            <el-card shadow="never" class="f13">
+                                <div>说明：</div>
+                                <div class="my-2">1. 支持正式会员查询</div>
+                                <div class="my-2">2. 个人或单位退出后查询无效</div>
+                                <div class="my-2">3. 个人或单位被除名后查询无效</div>
+                            </el-card>
+                        </el-col>
+                        <el-col :span="14">
+                            <el-card shadow="never">
+                                <el-tabs class="mt-2">
+                                    <el-tab-pane label="个人查询">
+                                        <el-form ref="p_form" :rules="rules" :model="p_form" label-width="140px">
+                                            <el-form-item label="志愿者姓名" prop="p_name">
+                                                <el-input v-model="p_form.p_name"></el-input>
+                                            </el-form-item>
+                                            <el-form-item label="身份证号" prop="p_id_number">
+                                                <el-input v-model="p_form.p_id_number"></el-input>
+                                            </el-form-item>
+                                            <el-button type="primary" @click="search_member('p_form')">提交查询</el-button>
+                                        </el-form>
+                                    </el-tab-pane>
+                                    <el-tab-pane label="单位查询">
+                                        <el-form ref="c_from" :rules="rules" :model="c_from" label-width="140px">
+                                            <el-form-item label="单位名称" prop="c_name">
+                                                <el-input v-model="c_from.c_name"></el-input>
+                                            </el-form-item>
+                                            <el-form-item label="统一社会信用代码" prop="c_credit_code" label-width="140px">
+                                                <el-input v-model="c_from.c_credit_code"></el-input>
+                                            </el-form-item>
+                                            <el-button type="primary" @click="search_member('c_from')">提交查询</el-button>
+                                        </el-form>
+                                    </el-tab-pane>
+                                </el-tabs>
+                            </el-card>
+                        </el-col>
+                    </el-row>
+                </el-card>
+                <div class="mt-2">
+                    <template v-if="p_show">
+                        <template v-if="member_list.length == 0">
+                            <el-card shadow="always">
+                                抱歉，未查到此人
+                            </el-card>
+                        </template>
+                        <template v-else>
+                            <div v-for="item in member_list" :key="item.id">
+                                <el-card shadow="always">
+                                    <el-row class="tac" :gutter="20">
+                                        <el-col :span="8">
+                                            <span>姓名：</span> <span>{{item.p_name}}</span>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <span>身份证号：</span> <span>{{item.p_id_number}}</span>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <span>志愿者编号：</span> <span>{{item.v_number}}</span>
+                                        </el-col>
+                                    </el-row>
+                                </el-card>
+                            </div>
+                        </template>
+                    </template>
+                    <template v-if="c_show">
+                        <template v-if="member_list.length == 0">
+                            <el-card shadow="always">
+                                抱歉，未查到此单位
+                            </el-card>
+                        </template>
+                        <template v-else>
+                            <div v-for="item in member_list" :key="item.id">
+                                <el-card shadow="always">
+                                    <el-row class="tac" :gutter="20">
+                                        <el-col :span="8">
+                                            <span>单位名称：</span> <span>{{item.c_name}}</span>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <span>统一社会信用代码：</span> <span>{{item.c_credit_code}}</span>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <span>志愿者编号：</span> <span>{{item.v_number}}</span>
+                                        </el-col>
+                                    </el-row>
+                                </el-card>
+                            </div>
+                        </template>
+                    </template>
+                </div>
+            </el-col>
+
+        </el-row>
+
+    </div>
+</template>
+<script>
+
+    var app_inside = {
+        data: function () {
+            return {
+                p_form: {
+                    p_name: '',
+                    p_id_number: '',
+                    type: 1
+                },
+                c_from: {
+                    c_name: '',
+                    c_credit_code: '',
+                    type: 2
+                },
+                rules: {
+                    p_name: [
+                        { required: true, message: '请输入志愿者姓名', trigger: 'change' }
+                    ],
+                    p_id_number: [
+                        { required: true, message: '请输入身份证号', trigger: 'change' }
+                    ],
+                    c_name: [
+                        { required: true, message: '请输入单位名称', trigger: 'change' }
+                    ],
+                    c_credit_code: [
+                        { required: true, message: '请输入统一社会信用代码', trigger: 'change' }
+                    ],
+                },
+                member_list: [],
+                p_show: false,
+                c_show: false
+            }
+        },
+        created: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        methods: {
+            page_init: function () {
+
+            },
+            search_member: function (form) {
+                var _this = this,
+                    _fields = Object.assign({}, form == 'p_form' ? _this.p_form : _this.c_from);
+                _this.p_show = false;
+                _this.c_show = false;
+                this.$refs[form].validate((valid) => {
+                    if (valid) {
+                        web.send('search_member', _fields, function (res) {
+                            _this.member_list = res;
+                            form == 'p_form' ? _this.p_show = true : _this.c_show = true;
+                        }, null, { loading_show: false });
+                    } else {
+                        _this.$message({
+                            message: '请填写必填项',
+                            type: 'warning'
+                        });
+                    }
+                });
+            }
+        },
+        template: '#app_inside'
+    }
+
+</script>

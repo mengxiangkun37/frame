@@ -1,0 +1,1127 @@
+<style>
+    .head_img {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+    }
+
+    .video_title {
+        text-align: center;
+        font-weight: 800;
+        font-size: 17px;
+        height: 50px;
+        line-height: 50px;
+    }
+
+    .questions_style p{
+        font-size: 15px;
+        line-height: 15px;
+    }
+
+    .is_right {
+        color: green;
+    }
+
+    .is_wrong {
+        color: red;
+    }
+
+</style>
+<template id="app_inside">
+    <div class="fully mt-2" v-if="page_loaded">
+        <el-card v-if="info_form.status>0" shadow="never" style="line-height:28px; border-radius: 0px;">
+            <el-row :gutter="20">
+                <el-col :span="16">
+                    <span style="color:#67C23A">欢迎您加入志愿者团队！</span>
+                    <span class="mx-3" style="color:#67C23A">您的志愿者编号：{{info_form.v_number}}</span>
+                    <span style="color:#67C23A"> 注册手机号：{{info_form.phone}}</span>
+                </el-col>
+                <el-col :span="2" :offset="6">
+                    <el-button type="danger" size="mini" round @click="do_logout()">退出登录</el-button>
+                </el-col>
+            </el-row>
+        </el-card>
+        <el-card v-else shadow="never" style="line-height:28px; border-radius: 0px;">
+            <el-row :gutter="20">
+                <el-col :span="16" style="color:#E6A23C">
+                    <i class="el-icon-warning-outline"></i>
+                    <span>提示：尊敬的用户您好，请完成学习视频和线上答题，成为正式会员！</span>
+                </el-col>
+                <el-col :span="2" :offset="6">
+                    <el-button type="danger" size="mini" round @click="do_logout()">退出登录</el-button>
+                </el-col>
+            </el-row>
+        </el-card>
+        <el-row class="tac mt-2" :gutter="20">
+            <el-col :span="6">
+                <el-menu default-active="1" class="el-menu-vertical-demo" active-text-color="#2d6edb">
+                    <el-menu-item index="1" @click="show_info()">
+                        <i class="el-icon-user"></i>
+                        <span slot="title">个人资料</span>
+                    </el-menu-item>
+                    <el-menu-item index="2" @click="show_video()">
+                        <i class="el-icon-video-camera"></i>
+                        <span v-if="info_form.is_video_pass == 1" slot="title">学习视频（完成）</span>
+                        <span v-else slot="title">学习视频（待完成）</span>
+                    </el-menu-item>
+                    <el-menu-item index="3" @click="show_test()">
+                        <i class="el-icon-edit"></i>
+                        <span v-if="info_form.is_test_pass == 1" slot="title">线上答题（完成）</span>
+                        <span v-else slot="title">线上答题（待完成）</span>
+                    </el-menu-item>
+                    <el-menu-item index="4" @click="show_sub_group()">
+                        <i class="el-icon-thumb"></i>
+                        <span v-if="info_form.is_test_pass == 1" slot="title">申请加入分团</span>
+                        <span v-else slot="title">申请加入分团</span>
+                    </el-menu-item>
+                    <el-menu-item index="5" @click="show_exit()">
+                        <i class="el-icon-circle-close"></i>
+                        <span slot="title">退出志愿服务申请</span>
+                    </el-menu-item>
+                </el-menu>
+            </el-col>
+            <template v-if="open_info">
+                <el-col :span="18">
+                    <div class="pa-3 bg-white">
+                        <el-row class="mb-3">
+                            <el-col :span="4" :offset="20" v-if="is_edit == true">
+                                <el-button type="primary" @click="edit_info()">编辑个人信息</el-button>
+                            </el-col>
+                            <el-col :span="6" :offset="18" v-if="is_edit == false">
+                                <el-button type="info" @click="edit_cancel()" plain>取消</el-button>
+                                <el-button type="primary" @click="edit_submit('info_form')">保存修改</el-button>
+                            </el-col>
+                        </el-row>
+                        <el-form :model="info_form" ref="info_form" label-width="100px" :rules="rules"
+                            class="demo-dynamic">
+                            <template v-if="info_form.type ==2">
+                                <el-row :gutter="20">
+                                    <el-col :span="12">
+                                        <el-form-item label="单位名称" prop="c_name">
+                                            <el-input v-model="info_form.c_name" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="12">
+                                        <el-form-item label="统一社会信用代码" label-width="140px" prop="c_credit_code">
+                                            <el-input v-model="info_form.c_credit_code" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="12">
+                                        <el-form-item label="单位类型" prop="c_unit_type">
+                                            <el-select v-model="info_form.c_unit_type" placeholder="请选择单位类型" :disabled=" is_edit ">
+                                                <el-option label="代理记账行业协会" value="代理记账行业协会"></el-option>
+                                                <el-option label="代理记账机构" value="代理记账机构"></el-option>
+                                                <el-option label="财经类院校" value="财经类院校"></el-option>
+                                                <el-option label="其他" value="其他"></el-option>
+                                            </el-select>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="12">
+                                        <el-form-item label="注册资本/出资总额（万元）" label-width="200px" prop="c_capital">
+                                            <el-input v-model="info_form.c_capital" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="14">
+                                        <el-form-item label="省市区" prop="selectedOptions">
+                                            <el-cascader :options="options" :props="props" v-model="info_form.selectedOptions" style="width:400px;" :disabled=" is_edit "></el-cascader>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="10">
+                                        <el-form-item label="电子邮箱" prop="c_email">
+                                            <el-input v-model="info_form.c_email" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="16">
+                                        <el-form-item label="实际办公地址" prop="address">
+                                            <el-input v-model="info_form.address" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="8">
+                                        <el-form-item label="成立日期">
+                                            <el-form-item prop="c_found_time">
+                                                <el-date-picker type="date" placeholder="选择日期" v-model="info_form.c_found_time" value-format="timestamp" :disabled=" is_edit " style="width: 100%;"></el-date-picker>
+                                            </el-form-item>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="8">
+                                        <el-form-item label="单位法人" prop="c_legal_person">
+                                            <el-input v-model="info_form.c_legal_person" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="8">
+                                        <el-form-item label="法人身份证" prop="c_legal_person_idnumber">
+                                            <el-input v-model="info_form.c_legal_person_idnumber" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="8">
+                                        <el-form-item label="联系方式" prop="c_legal_person_phone">
+                                            <el-input v-model="info_form.c_legal_person_phone" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="8">
+                                        <el-form-item label="服务团联络人" prop="c_liaison_person" label-width="110px">
+                                            <el-input v-model="info_form.c_liaison_person" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="8">
+                                        <el-form-item label="联系方式" prop="c_liaison_person_phone">
+                                            <el-input v-model="info_form.c_liaison_person_phone" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="8">
+                                        <el-form-item label="微信" prop="c_liaison_person_wx">
+                                            <el-input v-model="info_form.c_liaison_person_wx" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="8">
+                                        <el-form-item label="单位职工数量" prop="c_workers_number">
+                                            <el-input v-model="info_form.c_workers_number" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="8">
+                                        <el-form-item label="专职会计数量" prop="c_accounting_number">
+                                            <el-input v-model="info_form.c_accounting_number" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="8">
+                                        <el-form-item label="服务客户数量" prop="c_customer_number">
+                                            <el-input v-model="info_form.c_customer_number" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="12">
+                                        <el-form-item label="代账业务收入" prop="c_service_income">
+                                            <el-input v-model="info_form.c_service_income" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="12">
+                                        <el-form-item label="上年度经营收入" label-width="120px" prop="c_lastyear_income">
+                                            <el-input v-model="info_form.c_lastyear_income" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="14">
+                                        <el-form-item label="服务经历">
+                                            <el-form-item label="是否登记注册过志愿者" label-width="160px" prop="c_regd">
+                                                <el-radio-group v-model="info_form.c_regd" :disabled=" is_edit ">
+                                                    <el-radio label="是"></el-radio>
+                                                    <el-radio label="否"></el-radio>
+                                                </el-radio-group>
+                                            </el-form-item>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="10">
+                                        <el-form-item label="原注册机构" prop="c_regd_name">
+                                            <el-input v-model="info_form.c_regd_name" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="24">
+                                        <el-form-item label="业务范围" prop="c_business_range">
+                                            <el-input type="textarea" v-model="info_form.c_business_range" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="24">
+                                        <el-form-item label="自愿提供的服务内容" prop="c_service_content">
+                                            <el-input type="textarea" v-model="info_form.c_service_content" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                            </template>
+                            <template v-if="info_form.type ==1">
+                                <el-row :gutter="20">
+                                    <el-col :span="8">
+                                        <el-form-item label="姓名" prop="p_name">
+                                            <el-input v-model="info_form.p_name" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="8">
+                                        <el-form-item label="性别" prop="p_sex">
+                                            <el-select v-model="info_form.p_sex" placeholder="请选择性别" :disabled=" is_edit ">
+                                                <el-option label="男" value="男"></el-option>
+                                                <el-option label="女" value="女"></el-option>
+                                            </el-select>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="8">
+                                        <el-form-item label="民族" prop="p_nationality">
+                                            <el-input v-model="info_form.p_nationality" :disabled=" is_edit ">
+                                            </el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="8">
+                                        <el-form-item label="联系方式" prop="p_phone">
+                                            <el-input v-model="info_form.p_phone" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="8">
+                                        <el-form-item label="教育程度" prop="p_education">
+                                            <el-input v-model="info_form.p_education" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="8">
+                                        <el-form-item label="身份证号" prop="p_id_number">
+                                            <el-input v-model="info_form.p_id_number" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="8">
+                                        <el-form-item label="专业" prop="p_major">
+                                            <el-input v-model="info_form.p_major" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="8">
+                                        <el-form-item label="职务" prop="p_job">
+                                            <el-input v-model="info_form.p_job" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="8">
+                                        <el-form-item label="微信号" prop="p_wx">
+                                            <el-input v-model="info_form.p_wx" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="16">
+                                        <el-form-item label="所在单位" prop="p_company">
+                                            <el-input v-model="info_form.p_company" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="8">
+                                        <el-form-item label="是否兼职" prop="p_parttime_job">
+                                            <el-radio-group v-model="info_form.p_parttime_job" :disabled=" is_edit ">
+                                                <el-radio label="是"></el-radio>
+                                                <el-radio label="否"></el-radio>
+                                            </el-radio-group>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="14">
+                                        <el-form-item label="省市区" prop="selectedOptions">
+                                            <el-cascader :options="options" :props="props" v-model="info_form.selectedOptions" style="width:400px;" :disabled=" is_edit "></el-cascader>
+                                        </el-form-item>
+                                    </el-col>
+                                    <el-col :span="10">
+                                        <el-form-item label="电子邮箱" prop="p_email">
+                                            <el-input v-model="info_form.p_email" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="24">
+                                        <el-form-item label="通信地址" prop="address">
+                                            <el-input v-model="info_form.address" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="24">
+                                        <el-form-item label="工作简历" prop="p_resume">
+                                            <el-input type="textarea" v-model="info_form.p_resume" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="24">
+                                        <el-form-item label="志愿服务经历" prop="p_experience">
+                                            <el-input type="textarea" v-model="info_form.p_experience" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="24">
+                                        <el-form-item label="专业特长" prop="p_specialty">
+                                            <el-input type="textarea" v-model="info_form.p_specialty" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="24">
+                                        <el-form-item label="承诺内容" prop="p_promise">
+                                            <el-input type="textarea" v-model="info_form.p_promise" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                                <el-row :gutter="20">
+                                    <el-col :span="24">
+                                        <el-form-item label="自愿提供的服务内容" prop="p_service_content">
+                                            <el-input type="textarea" v-model="info_form.p_service_content" :disabled=" is_edit "></el-input>
+                                        </el-form-item>
+                                    </el-col>
+                                </el-row>
+                            </template>
+                        </el-form>
+                    </div>
+                </el-col>
+            </template>
+            <template v-if="open_video">
+                <el-col :span="18">
+                    <div style="min-height:280px" class="pa-3 bg-white">
+                        <div v-if="info_form.is_video_pass == 1">
+                            <el-card shadow="never" style="color:#67C23A;border-radius: 0px;">
+                                <i class="el-icon-check"></i>
+                                <span>恭喜您已完成学习视频！</span>
+                            </el-card>
+                        </div>
+                        <div v-else>
+                            <el-card shadow="never" style="color:#E6A23C;border-radius: 0px;">
+                                <i class="el-icon-warning-outline"></i>
+                                <span>提示：请耐心观看完整视频，观看结束将自动提示学习成功！</span>
+                            </el-card>
+                            <div class="video_title">{{video_data.title}}</div>
+                            <video @ended="video_end()" id="video" :src="video_data.url" controls controlsList="nodownload" oncontextmenu="return false" width="100%"></video>
+                        </div>
+                    </div>
+                </el-col>
+            </template>
+            <template v-if="open_test">
+                <el-col :span="18">
+                    <div style="min-height:280px" class="pa-3 bg-white">
+                        <div v-if="info_form.is_test_pass == 1">
+                            <el-card shadow="never" style="color:#67C23A;border-radius: 0px;">
+                                <i class="el-icon-check"></i>
+                                <span>恭喜您已完成线上答题！</span>
+                            </el-card>
+                        </div>
+                        <div v-else> 
+                            <el-card shadow="never" style="color:#E6A23C; border-radius: 0px;">
+                                <i class="el-icon-warning-outline"></i>
+                                <span> 提示： 点击开始答题系统将为您随机出5道题，全部作答正确才可通过。 </span>
+                                <el-button type="text" @click="do_questions()" style="float: right; padding: 0" :disabled=" is_start_question ">开始答题</el-button>
+                            </el-card>
+                            <div v-for="(item,index) in questions">
+                                <template v-if="right_answer_show == 0">
+                                    <el-card shadow="never" class="mt-2" style="border-radius: 0px;">
+                                        <el-row class="questions_style">
+                                            <el-col :span="1">
+                                                <p>{{index+1}}.</p>
+                                            </el-col>
+                                            <el-col :span="23">
+                                                <div v-html="item.content"></div>
+                                            </el-col>
+                                        </el-row>
+                                        <el-radio-group v-model="answer[index].oid" class="ml-3 mt-2">
+                                            <template v-for="o_item in question_options">
+                                                <div class="mb-3">
+                                                    <el-radio v-if="o_item.question_id == item.id" :label="o_item.id">{{o_item.title}}</el-radio>
+                                                </div>
+                                            </template>
+                                        </el-radio-group>
+                                    </el-card>
+                                </template>
+                                <template v-if="right_answer_show == 1">
+                                    <el-card shadow="never" class="mt-2" style="border-radius: 0px;">
+                                        <el-row class="questions_style">
+                                            <el-col :span="1">
+                                                <p>{{index+1}}.</p>
+                                            </el-col>
+                                            <el-col :span="23">
+                                                <div v-html="item.content"></div>
+                                            </el-col>
+                                        </el-row>
+                                        <el-radio-group v-model="answer[index].oid" class="ml-3 mt-2">
+                                            <template v-for="o_item in question_options">
+                                                <div class="mb-2">
+                                                    <el-radio v-if="o_item.question_id == item.id" :class="o_item.correct == 1?'is_right':''" :label="o_item.id">{{o_item.title}}</el-radio>
+                                                </div>
+                                            </template>
+                                        </el-radio-group>
+                                        <div :class="result_answer[index]?'is_right':'is_wrong'">{{result_answer[index]?'正确':'错误'}}</div>
+                                    </el-card>
+                                </template>
+                            </div>
+                            <el-card v-if="is_pass>0" shadow="never" style="border-radius: 0px;" :class="is_pass == 1?'is_right mt-2':is_pass ==2?'is_wrong mt-2':''">
+                                {{is_pass == 1?'恭喜您完成测试，请提交答案':is_pass == 2?'很遗憾未通过，快去重新测试吧！':''}}
+                            </el-card>
+                            <el-button v-if="is_pass == 0" type="success" @click="contrast_answer()" class="mt-3" style="width:100%;">提交作答</el-button>
+                            <el-button v-if="is_pass == 2" type="warning" @click="do_questions()" class="mt-3" style="width:100%;">重新作答</el-button>
+                            <el-button v-if="is_pass == 1" type="success" @click="submit_answer()" class="mt-3" style="width:100%;">完成测试，提交答案</el-button>
+                        </div>
+                    </div>
+                </el-col>
+            </template>
+            <template v-if="open_group">
+                <template v-if="info_form.status > 0">
+                    <el-col :span="18">
+                        <div style="min-height:280px" class="pa-3 bg-white">
+                            <el-card shadow="never" style="border-radius: 0px;">
+                                <el-form ref="join_group_form" :rules="group_rules" :model="join_group_form" label-width="80px">
+                                    <el-row :gutter="20">
+                                        <el-col :span="16">
+                                            <el-form-item label="选择分团" prop="member_group">
+                                                <el-select v-model="join_group_form.member_group" placeholder="请选择分团">
+                                                    <template v-for="item in sub_group_list" :key="item.id">
+                                                        <el-option :label="item.name" :value="item.id"></el-option>
+                                                    </template>
+                                                </el-select>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item>
+                                                <el-button type="primary" @click="join_group('join_group_form')">申请加入</el-button>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                </el-form>
+                            </el-card>
+                            <el-table :data="member_group_list" border class="mt-2">
+                                <el-table-column prop="group_name" label="我的分团"></el-table-column>
+                                <el-table-column prop="time" label="加入时间"></el-table-column>
+                            </el-table>
+                        </div>
+                    </el-col>
+                </template>
+                <template v-else>
+                    <el-col :span="18">
+                        <div style="min-height:280px" class="pa-3 bg-white">
+                            <el-card shadow="never" style="color:rgb(231, 85, 41);border-radius: 0px;">
+                                <span> 请完成视频学习和线上答题！</span>
+                            </el-card>
+                        </div>
+                    </el-col>
+                </template>
+            </template>
+            <template v-if="open_exit">
+                <template v-if="info_form.status == 1 || info_form.status == 0">
+                    <template v-if="info_form.type == 1">
+                        <el-col :span="18">
+                            <div style="min-height:280px" class="pa-3 bg-white">
+                                <el-form ref="out_form" :model="out_form" :rules="out_rules" label-width="100px">
+                                    <el-row :gutter="20">
+                                        <el-col :span="8">
+                                            <el-form-item label="姓名" prop="p_name">
+                                                <el-input v-model="info_form.p_name" disabled></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="性别" prop="p_sex">
+                                                <el-select v-model="info_form.p_sex" placeholder="请选择性别" disabled>
+                                                    <el-option label="男" value="男"></el-option>
+                                                    <el-option label="女" value="女"></el-option>
+                                                </el-select>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="联系方式" prop="p_phone">
+                                                <el-input v-model="info_form.p_phone" disabled></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                    <el-row :gutter="20">
+                                        <el-col :span="12">
+                                            <el-form-item label="所属分团" prop="team">
+                                                <el-input v-model="out_group_info.join('，')" disabled></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="12">
+                                            <el-form-item label="志愿者编号" prop="v_number">
+                                                <el-input v-model="info_form.v_number" disabled></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                    <el-row :gutter="20">
+                                        <el-col :span="24">
+                                            <el-form-item label="志愿服务经历" prop="experience">
+                                                <el-input type="textarea" v-model="out_form.experience"></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                    <el-row :gutter="20">
+                                        <el-col :span="24">
+                                            <el-form-item label="退出原因" prop="cause">
+                                                <el-input type="textarea" v-model="out_form.cause" placeholder="请说明主动退出原因，或被劝退原因"></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                    <el-form-item>
+                                        <el-button type="primary" @click="apply_quit('out_form')">申请退出</el-button>
+                                    </el-form-item>
+                                </el-form>
+                            </div>
+                        </el-col>
+                    </template>
+                    <template v-if="info_form.type == 2">
+                        <el-col :span="18" >
+                            <div style="min-height:280px" class="pa-3 bg-white">
+                                <el-form ref="out_form" :model="out_form" :rules="out_rules" label-width="100px">
+                                    <el-row :gutter="20">
+                                        <el-col :span="12">
+                                            <el-form-item label="单位名称" prop="c_name">
+                                                <el-input v-model="info_form.c_name" disabled></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="12">
+                                            <el-form-item label="统一社会信用代码" label-width="140px" prop="c_credit_code">
+                                                <el-input v-model="info_form.c_credit_code" disabled></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                    <el-row :gutter="20">
+                                        <el-col :span="12">
+                                            <el-form-item label="所属分团" prop="team">
+                                                <el-input v-model="out_group_info.join('，')" disabled></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="12">
+                                            <el-form-item label="志愿者编号" prop="v_number">
+                                                <el-input v-model="info_form.v_number" disabled></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                    <el-row :gutter="20">
+                                        <el-col :span="8">
+                                            <el-form-item label="服务团联络人">
+                                                <el-input v-model="info_form.c_liaison_person" disabled></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="联系方式" prop="c_liaison_person_phone">
+                                                <el-input v-model="info_form.c_liaison_person_phone" disabled></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-form-item label="身份证号码" label-width="90px" prop="c_id_number">
+                                                <el-input v-model="info_form.c_legal_person_idnumber" disabled></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                    <el-row :gutter="20">
+                                        <el-col :span="24">
+                                            <el-form-item label="服务经历" prop="experience">
+                                                <el-input type="textarea" v-model="out_form.experience"></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                    <el-row :gutter="20">
+                                        <el-col :span="24">
+                                            <el-form-item label="退出原因" prop="cause">
+                                                <el-input type="textarea" v-model="out_form.cause" placeholder="请说明主动退出原因，或被劝退原因"></el-input>
+                                            </el-form-item>
+                                        </el-col>
+                                    </el-row>
+                                    <el-form-item>
+                                        <el-button type="primary" @click="apply_quit('out_form')">申请退出</el-button>
+                                    </el-form-item>
+                                </el-form>
+                            </div>
+                        </el-col>
+                    </template>
+                </template>
+                <template v-if="info_form.status == 2">
+                    <el-col :span="18">
+                        <div style="min-height:280px" class="pa-3 bg-white">
+                            <el-card shadow="never" style="color:rgb(231, 85, 41);border-radius: 0px;">
+                                <span> 您已申请退出，正在等待审核，审核通过该账号将无法登录使用，如需再次使用请联系管理员</span>
+                            </el-card>
+                        </div>
+                    </el-col>
+                </template>
+            </template>
+        </el-row>
+    </div>
+</template>
+
+<script>
+    var app_inside = {
+        data: function () {
+            return {
+                page_loaded: false,
+                // 分团
+                visible: false,
+                join_group_form: {
+                    member_group: ''
+                },
+                group_rules: {
+                    member_group: [
+                        { required: true, message: '请输入姓名', trigger: 'change' }
+                    ]
+                },
+                sub_group_list: [],
+                member_group_list: [],
+                // 退出
+                out_form: {
+                    cause: '',
+                    experience: '',
+                },
+                out_rules: {
+                    experience: [
+                        { required: true, message: '请输入志愿服务经历', trigger: 'change' }
+                    ],
+                    cause: [
+                        { required: true, message: '请输入退出原因', trigger: 'change' }
+                    ],
+                },
+                out_group_info: [],
+                // 个人信息
+                info_form: {
+                    p_name: '',
+                    p_sex: '',
+                    p_nationality: '',
+                    p_education: '',
+                    p_phone: '',
+                    p_id_number: '',
+                    p_company: '',
+                    p_parttime_job: '',
+                    p_major: '',
+                    p_job: '',
+                    p_wx: '',
+                    p_email: '',
+                    p_resume: '',
+                    p_experience: '',
+                    p_specialty: '',
+                    p_service_content: '',
+                    p_promise: '',
+
+                    c_name: '',
+                    c_credit_code: '',
+                    c_capital: '',
+                    c_unit_type: '',
+                    c_found_time: '',
+                    c_email: '',
+                    c_workers_number: '',
+                    c_accounting_number: '',
+                    c_customer_number: '',
+                    c_lastyear_income: '',
+                    c_service_income: '',
+                    c_legal_person: '',
+                    c_legal_person_idnumber: '',
+                    c_legal_person_phone: '',
+                    c_liaison_person: '',
+                    c_liaison_person_phone: '',
+                    c_liaison_person_wx: '',
+                    c_regd: '',
+                    c_regd_name: '',
+                    c_business_range: '',
+                    c_service_content: '',
+                    selectedOptions: [],
+                    type: 1,
+                    address: '',
+                },
+                rules: {
+                    selectedOptions: [
+                        { type: 'array', required: true, message: '请选择省市区', trigger: 'change' }
+                    ],
+                    clause: [
+                        { type: 'array', required: true, message: '请先同意服务条款', trigger: 'change' }
+                    ],
+                    type: [
+                        { required: true, message: '请选择注册类型', trigger: 'change' }
+                    ],
+                    p_name: [
+                        { required: true, message: '请输入姓名', trigger: 'change' }
+                    ],
+                    p_sex: [
+                        { required: true, message: '请输入性别', trigger: 'change' }
+                    ],
+                    p_phone: [
+                        { required: true, message: '请输入联系方式', trigger: 'change' }
+                    ],
+                    p_education: [
+                        { required: true, message: '请输入教育程度', trigger: 'change' }
+                    ],
+                    p_id_number: [
+                        { required: true, message: '请输入身份证号', trigger: 'change' }
+                    ],
+                    p_company: [
+                        { required: true, message: '请输入所在单位', trigger: 'change' }
+                    ],
+                    p_parttime_job: [
+                        { required: true, message: '请选择是否兼职', trigger: 'change' }
+                    ],
+                    p_promise: [
+                        { required: true, message: '请填写承诺内容', trigger: 'change' }
+                    ],
+                    c_name: [
+                        { required: true, message: '请输入单位名称', trigger: 'change' }
+                    ],
+                    c_credit_code: [
+                        { required: true, message: '请输入统一社会信用代码', trigger: 'change' }
+                    ],
+                    c_legal_person: [
+                        { required: true, message: '请输入单位法人', trigger: 'change' }
+                    ],
+                    c_legal_person_idnumber: [
+                        { required: true, message: '请输入单位身份证号', trigger: 'change' }
+                    ],
+                    c_legal_person_phone: [
+                        { required: true, message: '请输入法人联系方式', trigger: 'change' }
+                    ],
+                    c_liaison_person: [
+                        { required: true, message: '请输入服务团联络人', trigger: 'change' }
+                    ],
+                    c_liaison_person_phone: [
+                        { required: true, message: '请输入服务团联络人联系方式', trigger: 'change' }
+                    ],
+                    c_liaison_person_wx: [
+                        { required: true, message: '请输入服务团联络人微信', trigger: 'change' }
+                    ],
+
+                },
+
+                open_info: true,
+                open_video: false,
+                open_test: false,
+                open_card: false,
+                open_exit: false,
+                open_group: false,
+
+                video_data: {},
+                selected_rate: 1,
+                play_rates: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2],
+
+                questions: [],
+                question_options: [],
+                answer: [
+                ],
+
+                result_answer: [],
+                right_answer_show: 0,
+                is_pass: -1,
+                is_start_question: false,
+
+                is_edit: true,
+
+                // 地址信息
+                options: city_options,
+                props: {
+                    label: 'name',
+                    value: 'name',
+                    children: 'children'
+                },
+
+            }
+        },
+        created: function () {
+            var _this = this;
+            if (GV.member_id == 0) {
+                redirect(_this.$url('index/login'));
+                return false;
+            }
+
+            _this.page_init();
+        },
+        watch: {
+            selected_rate: function (val) {
+                var video = document.getElementById('video');
+                video.playbackRate = val;
+            },
+        },
+        computed: {
+
+        },
+        methods: {
+            page_init: function () {
+                var _this = this;
+                _this.load_data();
+            },
+
+            load_data: function () {
+                var _this = this;
+                web.send('get_member_info', '', function (res) {
+                    _this.info_form = res;
+                    _this.info_form.selectedOptions = [];
+                    _this.info_form.selectedOptions.push(_this.info_form.province);
+                    _this.info_form.selectedOptions.push(_this.info_form.city);
+                    _this.info_form.selectedOptions.push(_this.info_form.area);
+                    _this.info_form.c_found_time = _this.info_form.c_found_time * 1000;
+                    _this.page_loaded = true;
+                }, null, { loading_show: false });
+            },
+            show_info: function () {
+                var _this = this;
+                _this.open_info = true;
+                _this.open_video = false;
+                _this.open_test = false;
+                _this.open_card = false;
+                _this.open_exit = false;
+                _this.open_group = false;
+            },
+            //分团
+            time: function (time) {
+                var date = new Date(time * 1000 + 8 * 3600 * 1000);
+                return date.toJSON().substr(0, 16).replace('T', ' ');
+            },
+            show_sub_group: function () {
+                var _this = this;
+                if (_this.info_form.status > 0) {
+                    web.send('get_sub_group', '', function (res) {
+                        _this.sub_group_list = res.sub_group_list;
+                        _this.member_group_list = res.member_group_list;
+                        _this.member_group_list.map(function (m) {
+                            m.group_name = '';
+                            m.time = _this.time(m.ctime);
+                            _this.sub_group_list.map(function (s) {
+                                if (m.sub_group_id == s.id) {
+                                    m.group_name = s.name;
+                                }
+                            })
+                        })
+                        _this.open_info = false;
+                        _this.open_video = false;
+                        _this.open_test = false;
+                        _this.open_card = false;
+                        _this.open_exit = false;
+                        _this.open_group = true;
+                    }, null, { loading_show: false });
+                } else {
+                    _this.open_info = false;
+                    _this.open_video = false;
+                    _this.open_test = false;
+                    _this.open_card = false;
+                    _this.open_exit = false;
+                    _this.open_group = true;
+                }
+
+            },
+            join_group: function (form) {
+                var _this = this,
+                    _fields = Object.assign({}, _this.join_group_form);
+                this.$confirm('确认加入该分团？', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    this.$refs[form].validate((valid) => {
+                        if (valid) {
+                            web.send('join_group', _fields, function (res) {
+                                _this.$message({
+                                    message: '加入成功',
+                                    type: 'success'
+                                });
+                                _this.show_sub_group();
+                            }, null, { loading_show: false });
+                        } else {
+                            _this.$message({
+                                message: '请选择分团',
+                                type: 'warning'
+                            });
+                        }
+                    });
+                }).catch(() => {
+                    this.$message({
+                        type: 'info',
+                        message: '已取消操作'
+                    });
+                });
+            },
+            // 视频
+            show_video: function () {
+                var _this = this;
+                web.send('get_video', '', function (res) {
+                    _this.video_data = res.video;
+                    _this.open_info = false;
+                    _this.open_video = true;
+                    _this.open_test = false;
+                    _this.open_card = false;
+                    _this.open_exit = false;
+                    _this.open_group = false;
+                }, null, { loading_show: false });
+            },
+            //视频播放完毕
+            video_end: function () {
+                var _this = this;
+                web.send('member_video_over', '', function (res) {
+                    _this.$message({
+                        message: '恭喜您视频学习完成！',
+                        type: 'success'
+                    });
+                    _this.load_data();
+                }, null, { loading_show: false });
+            },
+            show_test: function () {
+                var _this = this;
+                _this.open_info = false;
+                _this.open_video = false;
+                _this.open_test = true;
+                _this.open_card = false;
+                _this.open_exit = false;
+                _this.open_group = false;
+            },
+            //做题
+            do_questions: function () {
+                var _this = this;
+                _this.answer = [];
+                _this.questions = [];
+                _this.result_answer = [];
+                _this.right_answer_show = 0;
+                web.send('get_questions', '', function (res) {
+                    _this.questions = res.questions;
+                    _this.questions.map(function (q) {
+                        _this.answer.push({ qid: q.id, correct: 0, oid: '' });
+                    });
+                    _this.question_options = res.question_options;
+                    _this.video_voer = true;
+                    _this.is_start_question = true;
+                    _this.is_pass = 0;
+                }, null, { loading_show: false });
+            },
+            contrast_answer: function () {
+                var _this = this;
+                var right_answer_count = 0;
+                _this.answer.map(function (a) {
+                    var count = 0;
+                    _this.question_options.map(function (o) {
+                        if (a.qid == o.question_id && a.oid == o.id && o.correct == 1) {
+                            count++;
+                            right_answer_count++;
+                        }
+                    })
+                    if (count > 0) {
+                        _this.result_answer.push(true);
+                    } else {
+                        _this.result_answer.push(false);
+                    }
+                });
+                _this.right_answer_show = 1;
+                if (right_answer_count == _this.questions.length) {
+                    _this.is_pass = 1;
+                } else {
+                    _this.is_pass = 2;
+                }
+            },
+            submit_answer: function () {
+                var _this = this;
+                web.send('submit_answer', '', function (res) {
+                    _this.$message({
+                        message: '恭喜您完成测试！',
+                        type: 'success'
+                    });
+                    _this.load_data();
+                }, null, { loading_show: false });
+            },
+            show_exit: function () {
+                var _this = this;
+                _this.out_group_info = [];
+                web.send('get_sub_group', '', function (res) {
+                    _this.sub_group_list = res.sub_group_list;
+                    _this.member_group_list = res.member_group_list;
+                    _this.member_group_list.map(function (m) {
+                        _this.sub_group_list.map(function (s) {
+                            if (m.sub_group_id == s.id) {
+                                _this.out_group_info.push(s.name);
+                            }
+                        })
+                    })
+                    _this.open_info = false;
+                    _this.open_video = false;
+                    _this.open_test = false;
+                    _this.open_card = false;
+                    _this.open_exit = true;
+                    _this.open_group = false;
+                }, null, { loading_show: false });
+            },
+
+            //编辑个人信息
+            edit_info: function () {
+                var _this = this;
+                _this.is_edit = false;
+            },
+            edit_cancel: function () {
+                var _this = this;
+                this.$confirm('取消编辑您的更改将不会被保存, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    _this.$message({
+                        type: 'info',
+                        message: '取消成功'
+                    });
+                    _this.is_edit = true;
+                    _this.load_data();
+                }).catch(() => {
+
+                });
+            },
+            edit_submit: function (form) {
+                var _this = this,
+                    _fields = Object.assign({}, _this.info_form);
+                _fields.province = _fields.selectedOptions[0];
+                _fields.city = _fields.selectedOptions[1];
+                _fields.area = _fields.selectedOptions[2];
+                _fields.c_found_time = _fields.c_found_time / 1000;
+                _this.is_edit = false;
+                this.$refs[form].validate((valid) => {
+                    if (valid) {
+                        web.send('member_edit', _fields, function (res) {
+                            _this.$message({
+                                message: '修改成功',
+                                type: 'success'
+                            });
+                            _this.is_edit = true;
+                            _this.load_data();
+                        }, null, { loading_show: false });
+                    } else {
+                        _this.$message({
+                            message: '请填写必填项',
+                            type: 'warning'
+                        });
+                    }
+                });
+            },
+            do_logout: function () {
+                var _this = this;
+                this.$confirm('确定退出登录吗?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    web.send('member_logout', '', function (res) {
+                        _this.$message({
+                            message: '退出成功',
+                            type: 'success'
+                        });
+                        setTimeout(function () {
+                            _this.$redirect('/')
+                        }, 1000);
+                    }, null, { loading_show: false });
+                }).catch(() => {
+
+                });
+            },
+            // 申请退出
+            apply_quit: function (form) {
+                var _this = this,
+                    _fields = Object.assign({}, _this.out_form);
+                this.$refs[form].validate((valid) => {
+                    if (valid) {
+                        web.send('apply_quit', _fields, function (res) {
+                            _this.$message({
+                                message: '申请成功',
+                                type: 'success'
+                            });
+                            _this.load_data();
+                        }, null, { loading_show: false });
+                    } else {
+                        _this.$message({
+                            message: '请填写必填项',
+                            type: 'warning'
+                        });
+                    }
+                });
+            },
+        },
+        template: '#app_inside'
+    };
+</script>

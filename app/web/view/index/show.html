@@ -1,0 +1,33 @@
+<style>
+
+</style>
+<template id="app_inside">
+    <div class="fully">
+        <div class="bg-white mt-3 py-5">
+            <h1 class="mb-2 text-center">{$info.title}</h1>
+            <p class="mb-3 text-muted f14 text-center">发布时间：<span class="mr-3">{$info.utime|date='Y-m-d',###}</span>浏览次数：{$info.click}</p>
+            <div class="box-center border_bottom my-4 w8 "></div>
+            <div class="article_body f16 px-5 mx-5">
+                {$info.content|htmlspecialchars_decode}
+            </div>
+        </div>
+    </div>
+</template>
+
+
+<script>
+    var app_inside = {
+        data: function () {
+            return {
+            }
+        },
+        created: function () {
+            var _this = this;
+            // _this.page_init();
+        },
+        methods: {
+        },
+
+        template: '#app_inside'
+    };
+</script>

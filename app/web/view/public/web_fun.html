@@ -1,0 +1,165 @@
+<div id="web_container">
+    <template >
+
+    </template>
+</div>
+
+<script>
+    //web端的快捷方法
+    /*
+    取消了原：api.tops，api.alert，api.confirm方法，改用以下方法：
+
+    对话框（dialog）参考：https://element.eleme.cn/#/zh-CN/component/message-box  ，使用方法如：
+    $msgbox(options)
+    $alert(message, title, options) 或 $alert(message, options)
+    $confirm(message, title, options) 或 $confirm(message, options)
+    $prompt(message, title, options) 或 $prompt(message, options)
+
+    弹出小提示（原 api.tips() ），参考：https://element.eleme.cn/#/zh-CN/component/message  ，使用方法如：
+    this.$message({ message: '恭喜你，这是一条成功消息', type: 'success' });
+
+    右侧堆叠式弹出框：https://element.eleme.cn/#/zh-CN/component/notification
+     this.$notify({
+         title: '成功',
+         message: '这是一条成功的提示消息',
+         type: 'success'
+     });
+
+     */
+
+
+
+
+    var web = new Vue({
+        el: '#web_container',
+        data: {
+
+        },
+        methods: {
+
+            //主ajax方法
+            send: function( action, param , callback, errorcallback, config) {
+                var _this = this,
+                    url = GV.API_URL,
+                    loading = null,
+                    _config = Object.assign( {
+                        loading_show: true,
+                        loading_text: '加载中…',
+                        loading_color: 'rgba(255, 255, 255, 0.7)',
+                        loading_delay: 0
+                    }, config ),
+                    fields = {
+                        action: action,
+                        param: param
+                    };
+
+                if ( _config.loading_show ){
+                    loading = this.$loading({
+                        lock: true,
+                        text: _config.loading_text,
+                        spinner: 'el-icon-loading',
+                        background: _config.loading_color
+                    });
+                    if ( _config.loading_delay > 0 ){
+                        setTimeout( function () {
+                            loading.close();
+                        }, _config.loading_delay)
+                    }
+                }
+                GV.APP_DEBUG && console.log( '发送参数：', fields );
+                axios({
+                    method: 'post',
+                    url: url,
+                    data: fields
+                }).then(function ( res ) {
+                    var data = res.data;
+                    GV.APP_DEBUG && console.log( '返回结果：', data );
+                    _config.loading_show && loading.close();
+                    if (data.code) {
+                        if( typeof errorcallback == "function" ){
+                            errorcallback( data );
+                        }else{
+                            _this.$message( { message: '操作失败：' + data.msg + ( GV.APP_DEBUG ? data.code : '' ), type: 'error'} );
+                        }
+                    } else {
+                        typeof callback == "function" && callback( param.__return_all ? data : data.data, data.msg );
+                    }
+                })
+                    // .catch(function (data) {
+                    //     _config.loading_show && loading.close();
+                    //     _this.$message({message: '网络或数据错误，请重试…', type: 'warning'});
+                    //     typeof errorcallback == "function" && errorcallback( data );
+                    // });
+
+            }
+        }
+    });
+</script>
+
+<script>
+
+    Vue.filter('get_time', function (value, type, diff) {
+        if (!value) return '暂无';
+        return getTime(type, value, diff);
+    });
+
+    function TP_url(action, param) {
+        var url = GV.BASE_URL;
+        url = url + action;
+        if (typeof param != 'undefined') {
+            url = url + '?';
+            for (var key in param) {
+                url = url + key + '=' + param[key] + '&';
+            }
+            if (url.charAt(url.length - 1) == '&') {
+                url = url.substr(0, url.length - 1);
+            }
+        }
+        return url;
+    }
+
+    //生成url地址 'shop/goods_detail', { id: 25 }
+    Vue.prototype.$url = TP_url;
+
+    Vue.prototype.$redirect = function (url) {
+        if (url === 0) {
+            reloadPage()
+        } else if (url == -1) {
+            history.back();
+        } else {
+            redirect(url)
+        }
+    };
+
+    Vue.filter('num_to_code', function (value) {
+        var list = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+        return list[value] || '';
+    });
+
+    Vue.prototype.$get_field = function ( condition, arr, field ) {
+        var _k, _v, _res = '';
+        if ( typeof condition == 'object' ){
+            for( var k in condition ){
+                _k = k;
+                _v = condition[k];
+            }
+            arr.map( function ( o ) {
+                if ( o[_k] == _v ){
+                    _res = o[field];
+                }
+            })
+        }
+        return _res;
+    };
+
+    Vue.filter('htmlspecialchars_decode', function (str) {
+        if ( !str ) return '';
+        str = str.replace(/&amp;/g, '&');
+        str = str.replace(/&lt;/g, '<');
+        str = str.replace(/&gt;/g, '>');
+        str = str.replace(/&quot;/g, "''");
+        str = str.replace(/&#039;/g, "'");
+        return str;
+    });
+
+</script>

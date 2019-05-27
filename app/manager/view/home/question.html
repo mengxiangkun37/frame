@@ -1,0 +1,508 @@
+<style type="text/css">
+</style>
+
+<template id="app_inside">
+    <div>
+        <!--页面标题栏-->
+        <v-toolbar flat color="white">
+            <v-toolbar-title class="pr-2">
+                <span>题目管理</span>
+            </v-toolbar-title>
+            <v-divider class="ml-2" inset vertical></v-divider>
+            <v-spacer></v-spacer>
+
+            <v-btn @click="open_form_create()" color="primary" dark class="mb-2"><i class="fa fa-plus mr-1"></i> 创建新题目</v-btn>
+            <v-dialog v-model="form_opened_create" lazy persistent max-width="800px">
+                <v-card>
+                    <v-card-title>
+                        <div class="w9">
+                            <div class="title">
+                                <div>创建新题目</div>
+                            </div>
+                        </div>
+                        <v-spacer></v-spacer>
+                        <i class="fa fa-close f18 text-muted" @click="form_opened_create = false"></i>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text style="min-height: 550px;">
+                        <v-form ref="ref_form_create" lazy-validation>
+                            <v-container class="pa-0 mt-2">
+                                <v-layout row>
+                                    <v-flex xs12>
+                                        <v-select v-model="form_fields_create.type" :items=" types " label="题目类型"
+                                            :rules="[$com_rules.required]"></v-select>
+                                    </v-flex>
+                                </v-layout>
+                                <v-layout row>
+                                    <v-flex xs12>
+                                        <com_ueditor v-model="form_fields_create.content" :config="{ initialFrameHeight: 200}"
+                                            label="题面 - 图文格式排版"></com_ueditor>
+                                    </v-flex>
+                                </v-layout>
+                            </v-container>
+                            <div class="w10">
+                                <div class="mb-1 f12 text-muted">题目选项 <span class="text-primary" v-if=" form_fields_create.type == 4">点击选项后的替换符即可复制，替换题面中的文字</span></div>
+
+                                <v-container class="pa-0 mt-2">
+                                    <v-layout row align-center v-for=" (opt,index) in form_fields_create.options ">
+                                        <v-flex xs8>
+                                            <v-text-field v-model="opt.title" :label=" form_fields_create.type == 4 ? '填空' : '选项' + (index+1) "></v-text-field>
+                                        </v-flex>
+                                        <v-flex xs2 class="mx-2" v-if=" form_fields_create.type != 4">
+                                            <v-switch label="正确答案" v-model="opt.correct" @change="right_option_change(form_fields_create, index)"></v-switch>
+                                        </v-flex>
+                                        <v-flex xs2 class="mx-2" v-if=" form_fields_create.type == 4">
+                                            <v-chip @click="$copy($event, '##'+(index+1)+'##')">##{{index+1}}##</v-chip>
+                                        </v-flex>
+                                        <v-flex xs2 v-if=" form_fields_create.type != 3">
+                                            <v-btn small icon color="primary" @click=" add_option( index ) ">
+                                                <v-icon small>fa fa-plus</v-icon>
+                                            </v-btn>
+                                            <v-btn small icon color="error" @click=" remove_option( index ) ">
+                                                <v-icon small>fa fa-minus</v-icon>
+                                            </v-btn>
+                                        </v-flex>
+                                    </v-layout>
+                                </v-container>
+                            </div>
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="darken-1" flat @click="form_opened_create = false">关闭</v-btn>
+                        <v-btn color="blue darken-1" flat @click.native="form_submit_create()">提交创建</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+            <v-dialog v-model="form_opened_update" lazy persistent max-width="800px">
+                <v-card>
+                    <v-card-title>
+                        <div class="w9">
+                            <div class="title">编辑题目</div>
+                        </div>
+                        <v-spacer></v-spacer>
+                        <i class="fa fa-close f18 text-muted" @click="form_opened_update = false"></i>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text style="min-height: 550px;">
+                        <v-form ref="ref_form_update" lazy-validation>
+                            <v-container class="pa-0 mt-2">
+                                <v-layout row>
+                                    <v-flex xs12>
+                                        <v-select v-model="form_fields_update.type" :items=" types " label="题目类型"
+                                            :rules="[$com_rules.required]" disabled></v-select>
+                                    </v-flex>
+                                </v-layout>
+                                <v-layout row>
+                                    <v-flex xs12>
+                                        <com_ueditor v-model="form_fields_update.content" :config="{ initialFrameHeight: 200}"
+                                            label="题面 - 图文格式排版"></com_ueditor>
+                                    </v-flex>
+                                </v-layout>
+                            </v-container>
+                            <div class="w10">
+                                <div class="mb-1 f12 text-muted">题目选项 <span class="text-primary" v-if=" form_fields_update.type == 4">点击选项后的替换符即可复制，替换题面中的文字</span></div>
+
+                                <v-container class="pa-0 mt-2">
+                                    <v-layout row align-center v-for=" (opt,index) in form_fields_update.options ">
+                                        <v-flex xs8>
+                                            <v-text-field v-model="opt.title" :label=" form_fields_update.type == 4 ? '填空' : '选项' + (index+1) "></v-text-field>
+                                        </v-flex>
+                                        <v-flex xs2 class="mx-2" v-if=" form_fields_update.type != 4">
+                                            <v-switch label="正确答案" v-model="opt.correct" @change="right_option_change(form_fields_update, index)"></v-switch>
+                                        </v-flex>
+                                        <v-flex xs2 class="mx-2" v-if=" form_fields_update.type == 4">
+                                            <v-chip @click="$copy($event, '##'+(index+1)+'##')">##{{index+1}}##</v-chip>
+                                        </v-flex>
+                                        <v-flex xs2 v-if=" form_fields_update.type != 3">
+                                            <v-btn small icon color="primary" @click=" add_option( index, 'update' ) ">
+                                                <v-icon small>fa fa-plus</v-icon>
+                                            </v-btn>
+                                            <v-btn small icon color="error" @click=" remove_option( index, 'update' ) ">
+                                                <v-icon small>fa fa-minus</v-icon>
+                                            </v-btn>
+                                        </v-flex>
+                                    </v-layout>
+                                </v-container>
+                            </div>
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="darken-1" flat @click="form_opened_update = false">关闭</v-btn>
+                        <v-btn color="blue darken-1" flat @click.native="form_submit_update()">提交保存</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+        </v-toolbar>
+
+        <com_search ref="search" :search_config.sync=" search " @do_search=" load_data "></com_search>
+        <!--表格模板-->
+        <v-data-table v-model="selected" :headers="headers" :items="data_list" no-data-text="暂无数据" :pagination.sync="pagination"
+            :loading="loading" hide-actions select-all>
+            <template slot="items" slot-scope="props">
+                <td width="50">
+                    <v-checkbox v-model="props.selected" primary hide-details></v-checkbox>
+                </td>
+                <td>{{ props.item.id }}</td>
+                <td class="pt-2" valign="top">
+                    <com_status :arr=" types " primary_key="value" text_key="text_short" :value="props.item.type" class="f12"></com_status>
+                    <div v-html=" format_content( props.item.content ) "></div>
+                </td>
+                <td class="py-2">
+                    <div v-for=" ( opt, index ) in props.item.options " class="flex">
+                        <div v-if="props.item.type != 4">
+                            <v-icon small class="text-success mr-1" v-if=" opt.correct ">done</v-icon>
+                            <v-icon small class="text-muted mr-1" v-else>close</v-icon>
+                        </div>
+                        <div v-if=" props.item.type == 4 " class="text-muted mr-1">{{ index+1 }} <v-icon small class="text-muted">settings_ethernet</v-icon>
+                        </div>
+                        <div>{{opt.title}}</div>
+                    </div>
+                </td>
+                <td>{{ props.item.utime | get_time(2) }} </td>
+                <td class="px-0 text-xs-center">
+                    <v-icon class="mr-1" @click.stop="open_form_update(props.item)">edit</v-icon>
+                    <v-icon @click.stop="delete_selected(props.item)">delete</v-icon>
+                </td>
+            </template>
+        </v-data-table>
+
+        <v-container fluid class="px-0 py-2 bg-white">
+            <v-layout row>
+                <v-flex xs12 md6>
+
+                    <v-btn color="error" @click=" batch_delete() " :disabled="selected.length == 0">
+                        <v-icon>close</v-icon>
+                        <span>批量删除</span>
+                        <span v-if=" selected.length " class="ml-1">({{selected.length}})</span>
+                    </v-btn>
+
+                </v-flex>
+                <v-flex xs6 md6 align-center justify-end @click="$vuetify.goTo( 50, {duration: 800,offset: 0,easing: 'easeInOutCubic'})">
+                    <div class="d-inlineblock f12 text-muted">总 {{this.total_count}} 条</div>
+                    <v-pagination :disabled="loading" v-model="page" @input=" load_data() " :length="total_pages"></v-pagination>
+                </v-flex>
+            </v-layout>
+        </v-container>
+
+    </div>
+</template>
+
+
+<script>
+
+    var app_inside = {
+        data: function () {
+            var _this = this;
+            return {
+                headers: [
+                    { text: '题目ID', value: 'id', width: '60px' },
+                    { text: '题面', value: 'title', sortable: false },
+                    { text: '选项', value: 'type', sortable: false },
+                    { text: '最后更新', value: 'utime', width: '150px' },
+                    { text: '操作', value: 'id', sortable: false, width: '100px' }
+                ],
+
+                //翻页的配置，必须写
+                pagination: {
+                    rowsPerPage: -1,     //显示全部，推荐-1
+                    sortBy: null         //默认排序字段，推荐设置，descending = true && sortBy = 'id' 即 id desc
+                },
+                selected: [],
+
+                //分页的配置，可自定义
+                page_size: 20,
+                order: null,
+                page: 1,
+                total_count: 0,
+                data_list: [],
+                loading: false,
+
+                search: [
+                    {
+                        field: 'type',
+                        type: 'select',
+                        find_in_set: true,
+                        list: [],
+                        label: '过滤题型',
+                        value: null
+                    }, {
+                        field: 'content',
+                        type: 'text',
+                        label: '搜索题面',
+                        value: null
+                    }
+                ],
+
+                //其他业务数据
+                types: [],
+
+                //新增的表单
+                form_opened_create: false,
+                form_fields_create: {
+                    content: '',
+                    options: [],
+                    usefor: [1, 2]
+                },
+
+                //编辑的表单
+                form_opened_update: false,
+                form_fields_update: {}
+            }
+        },
+        computed: {
+            total_pages: function () {  //分页的总页数获取，不用动
+                if (this.page_size == null || this.total_count == null) return 0;
+                return Math.ceil(this.total_count / this.page_size)
+            },
+        },
+        mounted: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        watch: {
+            'form_fields_create.type': function (val) {
+                var _this = this;
+                switch (val) {
+                    case 3:
+                        _this.form_fields_create.options = [
+                            { title: '正确', correct: true },
+                            { title: '错误', correct: false }
+                        ];
+                        break;
+                    case 1:
+                    case 2:
+                        break;
+                    default:
+                        if (_this.form_fields_create.options.length != 0) {
+                            _this.form_fields_create.options = [];
+                            _this.add_option(0);
+                        }
+                        break;
+                }
+            }
+        },
+        methods: {
+            //页面初始化，推荐统一编写，比较清晰
+            page_init: function () {
+                var _this = this;
+                _this.load_data();
+            },
+            //表格加载与方法
+            load_data: function (reload) {
+                var _this = this,
+                    _fields = {
+                        page: reload ? 1 : _this.page,
+                        page_size: _this.page_size,
+                        search: arguments[1]
+                    };
+                if (typeof arguments[1] == 'undefined') { _this.$nextTick(function () { _this.$refs.search.do_search(); }); return false; }
+                if (reload) _this.page = 1;
+                if (_this.loading) return false;
+                _this.loading = true;
+                //开始读取数据
+                api.send('question_list', _fields, function (res) {
+                    _this.total_count = res.total_count;
+                    _this.option_list = res.option_list ? res.option_list.slice() : [];
+                    _this.question_list = res.data_list ? res.data_list.slice() : [];
+
+
+                    _this.types = res.question_types;
+                    _this.$refs.search.make_search_list('type', res.question_types, true);
+                    res.data_list.map(function (q) {
+                        if (q.usefor) {
+                            q.usefor = q.usefor.split(',');
+                            q.usefor.map(function (u, k) {
+                                q.usefor[k] = u * 1;
+                            });
+                        } else {
+                            q.usefor = [];
+                        }
+                        q.options = _this.option_list.filter(function (opt) {
+                            return opt.question_id == q.id;
+                        })
+                    });
+                    _this.data_list = res.data_list || [];
+
+                    _this.selected = [];
+                    _this.loading = false;
+                    api.tips('已加载数据', 'success');
+                }, null, { loading_show: false });
+            },
+
+            format_content: function (content) {
+                return content.replace(/##\d##/g, '<span style="text-decoration: underline">　　　</span>');;
+            },
+
+            //业务方法=======
+            open_form_create: function () {
+                var _this = this;
+                if (_this.form_fields_create.options.length == 0) {
+                    _this.add_option(0);
+                }
+                _this.form_opened_create = true;
+            },
+            form_submit_create: function () {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form_fields_create);
+
+                if (!_this.check_option(_fields)) {
+                    return false;
+                }
+
+                _fields.usefor = _fields.usefor.join(',');
+                if (this.$refs.ref_form_create.validate()) {
+                    api.send('question_create', _fields, function (res) {
+                        _this.form_fields_create = {
+                            content: '',
+                            options: [],
+                            usefor: [1, 2]
+                        };
+                        _this.form_opened_create = false;
+                        _this.load_data();
+                        api.tips('创建成功', 'success');
+                    });
+                }
+            },
+
+            //检测选项的正确答案是否符合规则
+            right_option_change: function (fields, index) {
+                var correct_count = 0,
+                    res = true;
+                fields.options.map(function (o) {
+                    if (o.correct) {
+                        correct_count++;
+                    }
+                });
+                switch (fields.type) {
+                    case 1:
+                    case 3:
+                        fields.options.map(function (o, i) {
+                            o.correct = i == index;
+                        });
+                        break;
+                    default:
+                        break;
+                }
+                return true;
+            },
+
+            //检测提交的options是否符合规则
+            check_option: function (fields) {
+                var correct_count = 0,
+                    has_empty = false,
+                    res = true;
+                fields.options.map(function (o) {
+                    if (o.correct) {
+                        correct_count++;
+                    }
+                    if (!o.title) {
+                        has_empty = true;
+                    }
+                });
+                switch (fields.type) {
+                    case '1':
+                        if (correct_count != 1) {
+                            api.tips('选择题必须只有1个正确答案', 'warning');
+                            res = false;
+                        }
+                        break;
+                    case '4':
+                        var in_content_option = fields.content.match(/##\d##/g);
+                        if (in_content_option.length != fields.options.length) {
+                            api.tips('填空选项与题目中设置的空数量不同，请修改后再提交', 'warning');
+                            res = false;
+                        }
+                        break;
+                    default:
+                        break;
+                }
+                if (has_empty) {
+                    api.tips('请移除空选项后再提交', 'warning');
+                    res = false;
+                }
+
+                return res;
+            },
+
+            add_option: function (index, action) {
+                var _this = this,
+                    _field = action == 'update' ? _this.form_fields_update : _this.form_fields_create,
+                    opt = {
+                        title: '',
+                        correct: false
+                    };
+                _field.options.splice(index + 1, 0, opt);
+            },
+            remove_option: function (index, action) {
+                var _this = this,
+                    _field = action == 'update' ? _this.form_fields_update : _this.form_fields_create;
+                if (_field.options.length <= 1) {
+                    api.tips('至少要有一个选项', 'warning');
+                    return false;
+                }
+                _field.options.splice(index, 1);
+            },
+
+            open_form_update: function (item) {
+                var _this = this;
+                _this.form_fields_update = Object.assign({}, item);
+                _this.$set(_this.form_fields_update.options, 'options', item.options);
+                _this.form_opened_update = true;
+            },
+            form_submit_update: function () {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form_fields_update);
+
+                if (!_this.check_option(_fields)) {
+                    return false;
+                }
+                _fields.usefor = _fields.usefor.join(',');
+
+                if (this.$refs.ref_form_update.validate()) {
+                    api.send('question_update', _fields, function (res) {
+                        _this.$refs.ref_form_update.reset();
+                        _this.form_opened_update = false;
+                        _this.load_data();
+                        api.tips('编辑成功', 'success');
+                    });
+                }
+            },
+
+            delete_selected: function (item) {
+                var _this = this;
+                api.confirm('确认删除吗？', '删除后无法恢复，也将一并删除选项数据', function () {
+                    api.send('question_delete', { id: item.id }, function (res) {
+                        _this.load_data();
+                        api.tips('删除成功', 'success');
+                    });
+                });
+            },
+
+            batch_delete: function () {
+                var _this = this,
+                    _ids = [];
+
+                this.selected.map(function (s) {
+                    _ids.push(s.id);
+                });
+                if (!_ids.length) {
+                    api.tips('先选择再操作', 'cyan');
+                    return false;
+                }
+                api.confirm('确认删除吗？', '删除后无法恢复，也将一并删除选项数据', function () {
+                    api.send('question_delete', {
+                        id: _ids
+                    }, function (res) {
+                        _this.load_data(true);
+                        api.tips('成功删除了' + res + '条记录', 'success');
+                    });
+                });
+            },
+        },
+        template: '#app_inside'
+    }
+
+</script>

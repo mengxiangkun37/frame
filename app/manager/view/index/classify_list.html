@@ -1,0 +1,433 @@
+
+<style type="text/css">
+
+</style>
+
+<template id="app_inside">
+    <div>
+        <!--页面标题栏-->
+        <v-toolbar flat color="white">
+            <v-toolbar-title>网站栏目管理</v-toolbar-title>
+            <v-divider class="mx-2" inset vertical></v-divider>
+            <v-menu :close-on-content-click="false" offset-y slide-x max-width="500">
+                <v-btn slot="activator" color="warning" dark><v-icon class="mr-2">help_outline</v-icon> 帮助</v-btn>
+                <div class="pa-2 bg-white">
+                    <ol>
+                        <li>默认白色背景为普通栏目，浅蓝色背景为链接栏目，浅粉色为内部调用。在前端可以通过识别栏目属性，以更好的安排栏目输出</li>
+                        <li>栏目属性-扩展属性里，有封面图片与内容，可以更好的显示栏目</li>
+                        <li>模板设置在前端需要有对应模板文件，以定制效果显示</li>
+                        <li>目前支持layout模板，输出包含vue+vuetify，可参考已有模板</li>
+                    </ol>
+                </div>
+            </v-menu>
+            <v-spacer></v-spacer>
+
+            <v-btn @click="open_all( true )"><i class="fa fa-angle-double-down mr-1"></i> 全部展开</v-btn>
+            <v-btn @click="open_all( false )"><i class="fa fa-angle-double-up mr-1"></i> 全部收起</v-btn>
+            <v-btn @click="open_form_create()" color="primary" dark><i class="fa fa-plus mr-1"></i> 创建新栏目</v-btn>
+
+            <v-dialog v-model="form_opened_create" lazy persistent max-width="1200px" transition="slide-x-transition">
+                <v-card>
+                    <v-card-title>
+                        <div class="w9">
+                            <div class="title">创建新栏目</div>
+                        </div>
+                        <v-spacer></v-spacer>
+                        <i class="fa fa-close f18 text-muted" @click="form_opened_create = false"></i>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text style="min-height: 800px;" class="pa-4">
+                        <v-form ref="ref_form_create" lazy-validation>
+                            <v-tabs grow>
+                                <v-tab v-for=" t in tab_items " ripple >{{ t }}</v-tab>
+
+                                <v-tab-item :key="0">
+                                    <v-text-field v-model="form_fields_create.title" :rules="[$com_rules.required]" label="栏目名称"></v-text-field>
+                                    <v-select v-model="form_fields_create.pid" :items=" for_form_classify( data_list ) " item-text="level_text" item-value="id" label="栏目层级" attach></v-select>
+                                    <v-select v-model="form_fields_create.type" :items=" type_list " label="栏目类型" hint="配合前端模板中 {:getClassify(id)} 之类的快捷方法，将自动生成相应的路径" attach></v-select>
+                                    <v-text-field v-model="form_fields_create.url" :rules="[$com_rules.required]" label="外联地址" v-if=" form_fields_create.type == 2 || form_fields_create.type == 3 "></v-text-field>
+                                    <v-switch :label=" form_fields_create.status ? '前端显示' : '隐藏栏目' " v-model="form_fields_create.status"></v-switch>
+                                    <v-text-field v-model="form_fields_create.sorts" label="排序-小值在前"></v-text-field>
+                                </v-tab-item>
+
+                                <v-tab-item :key="1">
+                                    <com_upload_file type="image" label="封面图片" v-model=" form_fields_create.fmpic " :config="{ editable: true }" :data="{group_id: 5}"></com_upload_file>
+                                    <com_ueditor v-model="form_fields_create.content"  label="附加内容 - 可方便在前端调用"></com_ueditor>
+                                </v-tab-item>
+
+                                <v-tab-item :key="2">
+                                    <v-text-field v-model="form_fields_create.seotitle" label="SEO标题"></v-text-field>
+                                    <v-text-field v-model="form_fields_create.keywords" label="关键词"></v-text-field>
+                                    <v-textarea v-model="form_fields_create.description" label="描述信息"></v-textarea>
+                                </v-tab-item>
+
+                                <v-tab-item :key="3">
+                                    <v-text-field v-model="form_fields_create.listtpl" label="列表模板，默认将使用前端默认模板"></v-text-field>
+                                    <v-text-field v-model="form_fields_create.arctpl" label="列表下的文章默认模板，默认将使用前端默认模板"></v-text-field>
+                                </v-tab-item>
+                            </v-tabs>
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="blue darken-1" flat @click.native="form_submit_create()">提交创建</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+            <v-dialog v-model="form_opened_update" lazy persistent max-width="800px">
+                <v-card>
+                    <v-card-title>
+                        <div class="w9">
+                            <div class="title">编辑栏目</div>
+                        </div>
+                        <v-spacer></v-spacer>
+                        <i class="fa fa-close f18 text-muted" @click="form_opened_update = false"></i>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text style="min-height: 550px;">
+                        <v-form ref="ref_form_update" lazy-validation>
+                            <v-tabs grow>
+                                <v-tab v-for=" t in tab_items " ripple>{{ t }}</v-tab>
+
+                                <v-tab-item :key="0">
+                                    <v-text-field v-model="form_fields_update.title" :rules="[$com_rules.required]" label="栏目名称"></v-text-field>
+                                    <v-select v-model="form_fields_update.pid" :items=" for_form_classify( data_list ) " item-text="level_text" item-value="id" label="栏目层级" attach></v-select>
+                                    <v-select v-model="form_fields_update.type" :items=" type_list " label="栏目类型" hint="配合前端模板中 {:getClassify(id)} 之类的快捷方法，将自动生成相应的路径" attach></v-select>
+                                    <v-text-field v-model="form_fields_update.url" :rules="[$com_rules.required]" label="外联地址" v-if=" form_fields_update.type == 2 || form_fields_update.type == 3 "></v-text-field>
+                                    <v-switch :label=" form_fields_update.status ? '前端显示' : '隐藏栏目' " v-model="form_fields_update.status"></v-switch>
+                                    <v-text-field v-model="form_fields_update.sorts" label="排序-小值在前"></v-text-field>
+                                </v-tab-item>
+
+                                <v-tab-item :key="1">
+                                    <com_upload_file type="image" label="封面图片" v-model=" form_fields_update.fmpic " :config="{ editable: true }" :data="{group_id: 5}"></com_upload_file>
+                                    <com_ueditor v-model="form_fields_update.content" label="附加内容 - 可方便在前端调用"></com_ueditor>
+                                </v-tab-item>
+
+                                <v-tab-item :key="2">
+                                    <v-text-field v-model="form_fields_update.seotitle" label="SEO标题"></v-text-field>
+                                    <v-text-field v-model="form_fields_update.keywords" label="关键词"></v-text-field>
+                                    <v-textarea v-model="form_fields_update.description" label="描述信息"></v-textarea>
+                                </v-tab-item>
+
+                                <v-tab-item :key="3">
+                                    <v-text-field v-model="form_fields_update.listtpl" label="列表模板，默认将使用前端默认模板"></v-text-field>
+                                    <v-text-field v-model="form_fields_update.arctpl" label="列表下的文章默认模板，默认将使用前端默认模板"></v-text-field>
+                                </v-tab-item>
+                            </v-tabs>
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="blue darken-1" flat @click.native="form_submit_update()">提交保存</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+        </v-toolbar>
+
+
+        <!-- 非table输出列表 -->
+        <div class="bg-white pa-2">
+            <classify_show :data_list=" data_list " :level="0" :pid="0" v-if=" data_list.length " @edit=" open_form_update($event) " @delete=" delete_selected($event) " @resort=" in_resort_list($event) "></classify_show>
+
+            <div class="text-xs-right">
+                <span class="f12 text-muted">调整上方排序值</span>
+                <v-btn @click="do_resorts()"><i class="fa fa-arrows-v mr-1"></i> 重新排序</v-btn>
+            </div>
+        </div>
+
+    </div>
+</template>
+
+<template id="classify_template">
+    <div>
+        <template v-for=" c in get_classify( pid ) ">
+            <v-divider></v-divider>
+            <div class="flex_center flex_lr" :class="{ 'purple lighten-5' : c.type == 5, 'light-blue lighten-5': c.type > 1 && c.type < 5 }">
+                <div class="flex_center">
+                    <v-btn icon :style="{ marginLeft: computed_pl }" @click=" c.opened = !c.opened " class="text-xs-center mr-2" :disabled="!has_sub(c.id)">
+                        <v-icon v-if=" has_sub(c.id) ">{{  c.opened ? 'keyboard_arrow_up' : 'keyboard_arrow_down' }}</v-icon>
+                    </v-btn>
+                    <a class="f16" :href=" $GV.BASE_URL + 'index/article_list?classid=' + c.id">{{c.title}} </a>
+                    <span class="text-muted f13 ml-2" v-text=" ' [ID:' + c.id + '] (文档:' + c.arc_count + ')' "></span>
+                    <v-icon class="ml-2" color="red" small v-if=" c.status == 0 ">fa fa-eye-slash</v-icon>
+                    <v-icon class="ml-2" color="green" small v-if=" c.status != 0 ">fa fa-eye</v-icon>
+                </div>
+                <div class="flex_center">
+                    <v-icon class="mr-2" @click.stop=" $emit('edit', c) ">edit</v-icon>
+                    <v-icon @click.stop=" $emit('delete', c) ">delete</v-icon>
+                    <v-text-field style="width: 40px; text-align: center;" class="ml-2" v-model="c.sorts" @change=" $emit('resort', c) "></v-text-field>
+                </div>
+            </div>
+            <classify_show :data_list="data_list" :level="level+1" :pid=" c.id " v-if=" c.opened " @edit=" $emit('edit', $event) " @resort=" $emit('resort', $event) "  @delete=" $emit('delete', $event) " ></classify_show>
+        </template>
+    </div>
+</template>
+
+<script>
+
+    Vue.component('classify_show', {
+        props: ['level', 'pid', 'data_list'],
+        data: function () {return {};},
+        computed: {
+            computed_pl: function () {
+                return this.level * 30 + 'px';
+            }
+        },
+        methods: {
+            has_sub: function ( id ) {
+                var res = false;
+                this.data_list.map( function ( c ) {
+                    if ( c.pid == id ) res = true;
+                });
+                return res;
+            },
+            get_classify: function ( pid ) {
+                var _pid = pid || 0,
+                    _list;
+                if ( !this.data_list ) return [];
+                _list = this.data_list.filter(function ( c ) {
+                    return c.pid == _pid;
+                });
+                return _list;
+            }
+        },
+        template: '#classify_template'
+    });
+
+    var app_inside = {
+        data: function () {
+            return {
+
+                //其他业务数据
+                data_list: [],
+
+                tab_items: ['基本属性', '扩展属性', 'SEO属性', '模板设置'],
+                type_list: [
+                    { text: '普通栏目', value: 1},
+                    { text: '外部链接', value: 2},
+                    { text: '外部链接(打开新页)', value: 3},
+                    { text: '链接到第一个子栏目', value: 4},
+                    { text: '配置容器-只在后台显示', value: 5}
+                ],
+
+                //表单方面：可以放在一起，用字段控制，不过分开写比较好，比较清晰，而且有时新增和编辑的字段不同就需要更多字段控制，反而比较麻烦且不容易统一处理。
+                //新增的表单
+                form_opened_create: false,
+                form_show_create_password: false,
+                form_fields_create: {
+                    title: '',
+                    type: 1,
+                    pid: 0,
+                    url: '',
+                    status: true,   //1/0字段，需要转换成bool型
+
+                    fmpic: '',
+                    content: '',
+                    sorts: 0,
+
+                    seotitle: '',
+                    keywords: '',
+                    description: '',
+
+                    listtpl: '',
+                    arctpl: ''
+                },
+
+                //编辑的表单
+                form_opened_update: false,
+                form_show_update_password: false,
+                form_fields_update: {},
+
+                resort_list: []
+            }
+        },
+        mounted: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        watch: {
+        },
+        methods: {
+
+            //页面初始化，推荐统一编写，比较清晰
+            page_init: function () {
+                var _this = this;
+                _this.load_data();
+            },
+
+            //表格加载与方法
+            load_data: function ( reload ) {
+                var _this = this;
+                api.send('classify_list', {}, function ( res ) {
+                    res.map( function ( c ) {
+                        if ( _this.data_list.length > 0 ){
+                            //数据重载后，保持菜单的打开状态
+                            _this.data_list.map( function ( last ) {
+                                if ( c.id == last.id ){
+                                    c.opened = last.opened
+                                }
+                            });
+                        }else{
+                            c.opened = false;
+                            c.content = c.content || '';    //防止 null 值注入props的错误
+                        }
+                    });
+                    _this.data_list = res;
+                } );
+            },
+
+            //业务方法=======
+            for_form_classify: function ( ) {
+                var _this = this,
+                    tree = [],
+                    _while_count = 0, //防止死循环
+                    list = JSON.parse(JSON.stringify( _this.data_list ));
+                if ( this.data_list.length == 0 ){
+                    return [];
+                }
+                tree = listToTree('id', 'pid', list);
+
+                function check() {
+                    var _pass = true;
+                    tree.map( function ( t ) {
+                        if ( typeof t.child != 'undefined' && t.child.length > 0 ) _pass = false;
+                    });
+                    return _pass;
+                }
+
+                while( !check() && _while_count < 99 ){
+                    if ( _while_count == 0 ){
+                        tree.sort(function (a,b) {
+                            return a.sorts - b.sorts;
+                        });
+                    }
+                    for( var i = 0; i<tree.length; i++){
+                        if ( tree[i].child && tree[i].child.length > 0 ){
+                            var _sub = tree[i].child.slice(),
+                                _level = tree[i].level || 0;
+                            tree[i].child = [];
+                            var __i = 1;
+                            _sub.sort(function (a,b) {
+                                return a.sorts - b.sorts;
+                            });
+                            _sub.map( function ( s ) {
+                                s.level = _level + 1;
+                                tree.splice( i + __i , 0, s );
+                                __i++;
+                            });
+                            break;
+                        }
+                    }
+                    _while_count++;
+                }
+
+                tree.map( function ( _l ) {
+                    if ( !_l.level  ){
+                        _l.level = 0;
+                    }
+                    var _str = '';
+                    for( var i = 0; i < _l.level; i++ ){
+                        _str += '　　'
+                    }
+                    _str = _str + '└─';
+                    _l.level_text = _str + ' ' + _l.title;
+                });
+                return tree;
+            },
+
+            open_all: function ( action ) {
+                var _this = this;
+                _this.data_list.map( function ( l ) {
+                    l.opened = action;
+                });
+            },
+
+            open_form_create: function () {
+                var _this = this;
+                _this.form_opened_create = true;
+            },
+            form_submit_create: function () {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form_fields_create);
+
+                //创建 _fields 来进行验证、格式化，不污染表单数据
+                _fields.status = _fields.status ? 1 : 0;
+
+                if (this.$refs.ref_form_create.validate()) {
+                    api.send('classify_create', _fields, function ( res ) {
+                        _this.$refs.ref_form_create.reset();
+                        _this.form_opened_create = false;
+                        _this.form_fields_create.pid = 0;
+                        _this.form_fields_create.status = true;
+                        _this.form_fields_create.content = '';
+                        _this.page_init();
+                        api.tips('创建成功', 'success');
+                    } );
+                }
+            },
+
+            open_form_update: function ( item ) {
+                var _this = this;
+                _this.form_fields_update = Object.assign({}, item);
+                _this.form_opened_update = true;
+            },
+            form_submit_update: function () {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form_fields_update);
+
+                //创建 _fields 来进行验证、格式化，不污染表单数据
+                _fields.status = _fields.status ? 1 : 0;
+                _fields.child = undefined;
+
+                if (this.$refs.ref_form_update.validate()) {
+                    api.send('classify_update', _fields, function ( res ) {
+                        _this.form_opened_update = false;
+                        _this.page_init();
+                        api.tips('编辑成功', 'success');
+                    } );
+                }
+            },
+            delete_selected: function ( item ) {
+                var _this = this;
+                api.confirm('确认删除吗？', '栏目下仍有文章的，文章将无法找到，且栏目删除后无法恢复', function () {
+                    api.send('classify_delete', { id: item.id }, function ( res ) {
+                        _this.page_init();
+                        api.tips('删除成功', 'success');
+                    } );
+                });
+
+            },
+
+            in_resort_list: function ( item ) {
+                var _this = this,
+                    _in = false;
+                _this.resort_list.map( function ( r ) {
+                    if ( r.id == item.id ) {
+                        _in = true;
+                        r.sorts = item.sorts;
+                    }
+                } );
+                if ( !_in ){
+                    _this.resort_list.push( {
+                        id: item.id,
+                        sorts: item.sorts
+                    } );
+                }
+            },
+            do_resorts: function () {
+                var _this = this;
+                if ( _this.resort_list.length == 0 ){
+                    return false;
+                }
+                api.send('classify_resorts', _this.resort_list, function ( res ) {
+                    _this.page_init();
+                    api.tips('重新排序成功', 'success');
+                } );
+            }
+        },
+        template: '#app_inside'
+    }
+
+</script>

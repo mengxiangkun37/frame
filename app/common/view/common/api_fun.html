@@ -1,0 +1,363 @@
+<div id="ajax_container">
+    <template >
+        <v-dialog v-model="com_loading" hide-overlay persistent width="300">
+            <v-card :color="com_loading_color" dark>
+                <v-card-text>
+                    {{com_loading_text}}
+                    <v-progress-linear indeterminate color="white" class="mb-0"></v-progress-linear>
+                </v-card-text>
+            </v-card>
+        </v-dialog>
+
+        <v-dialog v-model="com_alert_show" persistent max-width="330">
+            <v-card>
+                <v-card-title class="f18">{{ com_alert.title }}</v-card-title>
+                <v-card-text class="f14">{{ com_alert.text }}</v-card-text>
+                <v-card-actions>
+                    <v-spacer></v-spacer>
+                    <v-btn color="green darken-1" flat @click.native="com_alert_submit()">{{ com_alert.btn_text }}</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
+        <v-dialog v-model="com_confirm_show" max-width="330">
+            <v-card>
+                <v-card-title class="f18">{{ com_confirm.title }}</v-card-title>
+                <v-card-text v-if="com_confirm.text" class="f14">{{ com_confirm.text }}</v-card-text>
+                <v-card-actions>
+                    <v-spacer></v-spacer>
+                    <v-btn color="red darken-1" flat @click.native="com_confirm_cancel()">{{ com_confirm.btn_text[0] }}</v-btn>
+                    <v-btn color="green darken-1" flat @click.native="com_confirm_submit()">{{ com_confirm.btn_text[1] }}</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
+        <v-snackbar v-model="snackbar_show" :bottom="snackbar.bottom" :left="snackbar.left" :right="snackbar.right" :top="snackbar.top" :color="snackbar.color" :timeout="snackbar.timeout">
+            {{ snackbar.text }}
+            <v-btn dark flat @click="snackbar_show = false">x</v-btn>
+        </v-snackbar>
+    </template>
+</div>
+
+<script>
+    //ajax方法
+    var api = new Vue({
+        el: '#ajax_container',
+        data: {
+
+            com_alert_show: false,
+            com_alert: {
+                title: '提示',
+                text: '',
+                btn_text: '确定' ,
+                ok_callback: function () {}
+            },
+
+            com_confirm_show: false,
+            com_confirm: {
+                title: '确定执行吗？',
+                text: '删除后无法恢复。',
+                btn_text: ['取消', '确定'],
+                ok_callback: function () {}
+            },
+
+            snackbar_show: false,
+            snackbar: {
+                text: '',
+                top: true,
+                right: true,
+                bottom: false,
+                left: false,
+                color: 'success',
+                timeout: 3000
+            },
+
+            com_loading: false,
+            com_loading_text: '加载中…',
+            com_loading_color: 'primary'
+        },
+        methods: {
+
+            //alert组件
+            alert: function ( title, text, callback, btn_text ) {
+                var _this = this;
+                _this.com_alert.title = title || '提示';
+                _this.com_alert.text = text || '';
+                _this.com_alert.btn_text = btn_text || '确定';
+                _this.com_alert.ok_callback = typeof callback == 'function' ? callback : function () {};
+                _this.com_alert_show = true;
+            },
+            com_alert_submit: function () {
+                this.com_alert.ok_callback();
+                this.com_alert_show = false;
+            },
+
+            //confirm组件
+            confirm: function ( title, text, callback, cancelback, btn_text ) {
+                var _this = this;
+                _this.com_confirm.title = title || '确定执行吗？';
+                _this.com_confirm.text = text || '';
+                _this.com_confirm.btn_text = btn_text || ['取消', '确定'];
+                _this.com_confirm.ok_callback = typeof callback == 'function' ? callback : function () {};
+                _this.com_confirm.cancelback = typeof cancelback == 'function' ? cancelback : function () {};
+                _this.com_confirm_show = true;
+            },
+            com_confirm_submit: function () {
+                this.com_confirm.ok_callback();
+                this.com_confirm_show = false;
+            },
+            com_confirm_cancel: function () {
+                this.com_confirm.cancelback();
+                this.com_confirm_show = false;
+            },
+
+            //弹出提示，默认右上角
+            tips: function ( text, color, position) {
+                var _this = this;
+                _this.snackbar.text = text || '操作成功';
+                _this.snackbar.color = color || 'cyan';
+                if ( position == 3 ){
+                    _this.snackbar.bottom = true;
+                    _this.snackbar.top = false;
+                    _this.snackbar.right = false;
+                    _this.snackbar.left = false;
+                }
+                _this.snackbar_show = true;
+            },
+
+            loading: function ( text, color, delay ) {
+                var _this = this;
+                this.com_loading_text = text ? text : '加载中…';
+                this.com_loading_color = color ? color : 'primary';
+                this.com_loading = true;
+                if ( delay ){
+                    setTimeout( function () {
+                        _this.loading_close();
+                    }, delay)
+                }
+            },
+            loading_close: function () {
+                this.com_loading = false;
+            },
+
+            //主ajax方法
+            send: function( action, param , callback, errorcallback, config) {
+                var _this = this,
+                    url = GV.API_URL,
+                    _config = Object.assign( {
+                        loading_show: true,
+                        loading_text: '加载中…',
+                        loading_color: 'primary',
+                        loading_delay: 0
+                    }, config ),
+                    fields = {
+                        action: action,
+                        param: param
+                    };
+
+                if ( _config.loading_show ){
+                    _this.loading( _config.loading_text, _config.loading_color, _config.loading_delay );
+                }
+                GV.APP_DEBUG && console.log( '发送参数：', fields );
+                axios({
+                    method: 'post',
+                    url: url,
+                    data: fields
+                }).then(function ( res ) {
+                    var data = res.data;
+                    GV.APP_DEBUG && console.log( '返回结果：', data );
+                    _this.loading_close();
+                    if (data.code) {
+                        if( typeof errorcallback == "function" ){
+                            errorcallback( data );
+                        }else{
+                            api.tips('操作失败：' + data.msg + ( GV.APP_DEBUG ? data.code : '' ), 'red darken-3');
+                        }
+                    } else {
+                        typeof callback == "function" && callback( param.__return_all ? data : data.data, data.msg );
+                    }
+                })
+//                    .catch(function (data) {
+//                    _this.loading_close();
+//                    api.tips('网络或数据错误，请重试…', 'amber accent-4');
+//                    typeof errorcallback == "function" && errorcallback( data );
+//                });
+
+            }
+        }
+    });
+</script>
+
+
+<script>
+    Vue.component('com_status', {
+        props: {
+            value: {type: [Number,String], default: 0 },
+            arr: {type: Array, default: [ { id: 0, text: '否', style: 'text-danger'}, { id: 1, text: '是', style: 'text-success'} ] },
+            itemValue: {type: String, default: 'id'},
+            itemStyle: {type: String, default: 'style'},
+            itemText: {type: String, default: 'text'}
+        },
+        data: function () {
+            return {
+                style: 'text-muted',
+                text: ''
+            };
+        },
+        watch: {
+            arr: function ( val ) {
+                this.make_it();
+            }
+        },
+        mounted: function () {
+            this.make_it();
+        },
+        methods: {
+            make_it : function () {
+                var _this = this;
+                _this.arr.map(function ( a ) {
+                    if ( a[_this.itemValue] == _this.value ){
+                        _this.style = a[_this.itemStyle];
+                        _this.text = a[_this.itemText]
+                    }
+                });
+            }
+        },
+        template: '<div :class="style">{{ text }}<slot></slot></div>'
+    });
+</script>
+
+<script>
+
+    Vue.prototype.$com_rules = {
+        required: function (v) {
+            return !!v || '必须填写/选择';
+        },
+        required_select: function (v) {
+            return !!v.length || '必须选择';    //只适用于多选验证
+        },
+        right_username: function (v) {
+            var reg = /^[_0-9a-zA-Z]*$/gi;
+            return reg.test(v) || '名称只能包含 【_、数字、英文字母】';
+        },
+        length_limit: function(v){
+            if(v.length < 6){
+                return '最少6个字符';
+            }else{
+                return true;
+            }
+        },
+        id_number: function (v) {
+            var reg = /(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)/;
+            return reg.test(v) || '身份证号码有误';
+        },
+        min: function (v) {
+            if ( !v ){
+                return true;
+            }
+            return v.length >= 6 || '最少6个字符'
+        },
+        max_10: function (v) {
+            if ( !v ){
+                return true;
+            }
+            return v.length < 10 || '最多10个字符'
+        },
+        phone: function (v) {
+            var reg = /^1[3456789]\d{9}$/;
+            return reg.test(v) || '手机号码有误';
+        },
+        after_today: function (v) {
+            return new Date(v).getTime() >= (new Date().getTime() - 84600000);
+        }
+    };
+
+    Vue.filter('get_time', function (value, type, diff) {
+        if (!value) return '暂无';
+        return getTime(type, value, diff);
+    });
+
+    //生成url地址 'shop/goods_detail', { id: 25 }
+    Vue.prototype.$url = function (action, param) {
+        var url = GV.BASE_URL;
+        url = url + action;
+        if (typeof param != 'undefined') {
+            url = url + '?';
+            for (var key in param) {
+                url = url + key + '=' + param[key] + '&';
+            }
+            if (url.charAt(url.length - 1) == '&') {
+                url = url.substr(0, url.length - 1);
+            }
+        }
+        return url;
+    };
+
+    Vue.prototype.$redirect = function (url) {
+        if (url === 0) {
+            reloadPage()
+        } else if (url == -1) {
+            history.back();
+        } else {
+            redirect(url)
+        }
+    };
+
+    Vue.filter('num_to_code', function (value) {
+        var list = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+        return list[value] || '';
+    });
+
+    Vue.prototype.$get_field = function ( condition, arr, field ) {
+        var _k, _v, _res = '';
+        if ( typeof condition == 'object' ){
+            for( var k in condition ){
+                _k = k;
+                _v = condition[k];
+            }
+            arr.map( function ( o ) {
+                if ( o[_k] == _v ){
+                    _res = o[field];
+                }
+            })
+        }
+        return _res;
+    };
+
+    Vue.filter('htmlspecialchars_decode', function (str) {
+        if ( !str ) return '';
+        str = str.replace(/&amp;/g, '&');
+        str = str.replace(/&lt;/g, '<');
+        str = str.replace(/&gt;/g, '>');
+        str = str.replace(/&quot;/g, "''");
+        str = str.replace(/&#039;/g, "'");
+        return str;
+    });
+
+    Vue.filter('file_size', function (value) {
+        var unitArr = new Array("Bytes","KB","MB","GB","TB","PB","EB","ZB","YB"),
+            index = 0,
+            srcsize = parseFloat(value),
+            size;
+        if(null == value || value == ''){
+            return "0 Bytes";
+        }
+        index = Math.floor(Math.log(srcsize)/Math.log(1024));
+        size = srcsize/Math.pow(1024,index);
+        return size.toFixed(2) + unitArr[index];
+    });
+
+
+    function renderSize(value){
+        if(null==value||value==''){
+            return "0 Bytes";
+        }
+        var unitArr = new Array("Bytes","KB","MB","GB","TB","PB","EB","ZB","YB");
+        var index=0;
+        var srcsize = parseFloat(value);
+        index=Math.floor(Math.log(srcsize)/Math.log(1024));
+        var size =srcsize/Math.pow(1024,index);
+        size=size.toFixed(2);//保留的小数位数
+        return size+unitArr[index];
+    }
+</script>

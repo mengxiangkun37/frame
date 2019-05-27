@@ -1,0 +1,141 @@
+<style type="text/css">
+
+</style>
+
+<template id="app_inside">
+    <div>
+        <!--页面标题栏-->
+        <v-toolbar flat color="white">
+            <v-toolbar-title>个人退出申请</v-toolbar-title>
+            <v-divider class="mx-2" inset vertical></v-divider>
+            <v-spacer></v-spacer>
+        </v-toolbar>
+        <com_search ref="search" :search_config.sync=" search " :auto_make="{ order: 2, page_size: 1}" @do_search=" load_data "></com_search>
+        <!--表格模板-->
+        <v-data-table no-data-text="暂无数据" :headers="headers" :items="data_list" :pagination.sync="pagination" :loading="loading"
+            hide-actions>
+            <template slot="items" slot-scope="props">
+                <td>{{ props.item.p_name }}</td>
+                <td>{{ props.item.ctime | get_time(2) }}</td>
+                <td>{{ props.item.p_sex }}</td>
+                <td>{{ props.item.p_phone }}</td>
+                <td>{{ props.item.v_number }}</td>
+                <td>{{ props.item.experience }}</td>
+                <td>{{ props.item.cause }}</td>
+                <td>{{ props.item.utime | get_time(2) }}</td>
+                <td v-if="props.item.status == 0">
+                    <v-btn flat icon color="green" @click="set_out(props.item.id)">
+                        <v-icon dark>check_circle</v-icon>
+                    </v-btn>
+                </td>
+                <td v-else>
+                    <div class="text-muted">已退出</div>
+                </td>
+            </template>
+        </v-data-table>
+        <v-container fluid class="px-0 py-2 bg-white">
+            <v-layout row>
+                <v-flex xs12 md6>
+                </v-flex>
+                <v-flex xs6 md6 align-center justify-end>
+                    <div class="d-inlineblock f12 text-muted">总 {{this.total_count}} 条</div>
+                    <v-pagination :disabled="loading" v-model="page" @input=" load_data() " :length="total_pages"
+                        total-visible="9"></v-pagination>
+                </v-flex>
+            </v-layout>
+        </v-container>
+    </div>
+</template>
+<script>
+    var app_inside = {
+        data: function () {
+            return {
+                headers: [
+                    { text: '申请人', value: 'p_name', sortable: false },
+                    { text: '申请时间', value: 'ctime', sortable: false },
+                    { text: '性别', value: 'p_sex', sortable: false },
+                    { text: '联系方式', value: 'p_phone', sortable: false },
+                    { text: '志愿者编号', value: 'v_number', sortable: false },
+                    { text: '志愿服务经历', value: 'experience', sortable: false },
+                    { text: '原因', value: 'cause', sortable: false },
+                    { text: '处理时间', value: 'utime', sortable: false },
+                    { text: '操作', value: 'id', sortable: false, width: '100px' }
+                ],
+                pagination: {
+                    rowsPerPage: -1,
+                    sortBy: null
+                },
+                selected: [],
+
+                page_size: 20,
+                page: 1,
+                total_count: 0,
+                data_list: [],
+                loading: false,
+                search: [
+
+                ],
+            }
+        },
+        created: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        computed: {
+            total_pages: function () {  //分页的总页数获取，不用动
+                if (this.page_size == null || this.total_count == null) return 0;
+                return Math.ceil(this.total_count / this.page_size)
+            }
+        },
+        methods: {
+
+            //页面初始化，推荐统一编写，比较清晰
+            page_init: function () {
+                var _this = this;
+                _this.load_data();
+            },
+            //表格加载与方法
+            load_data: function (reload) {
+                var _this = this,
+                    _fields = {
+                        page: reload ? 1 : _this.page,
+                        page_size: _this.page_size,
+                        search: arguments[1]
+                    };
+                //通用方法
+                if (typeof arguments[1] == 'undefined') { _this.$nextTick(function () { _this.$refs.search.do_search(); }); return false; }
+                if (reload) _this.page = 1;
+                if (_this.loading) return false;
+                _fields.search.push({ field: 'type', value: 1, type: 'select' });
+                _this.loading = true;
+                //开始读取数据
+                api.send('member_out_list', _fields, function (res) {
+                    _this.total_count = res.total_count;
+                    _this.data_list = res.data_list || [];
+                    _this.data_list.map(function (d) {
+                        res.member.map(function (m) {
+                            if (d.member_id == m.id) {
+                                d.p_name = m.p_name;
+                                d.p_sex = m.p_sex;
+                                d.p_phone = m.p_phone;
+                                d.v_number = m.v_number;
+                            }
+                        });
+                    })
+                    _this.loading = false;
+                }, null, { loading_show: false });
+            },
+            set_out: function (id) {
+                var _this = this;
+                api.confirm('确认同意退出申请吗？', '', function () {
+                    api.send('set_member_out', { id: id }, function (res) {
+                        api.tips('处理成功！', 'success');
+                        _this.$refs.search.do_search();
+                    }, null, { loading_show: false });
+                });
+            }
+        },
+        template: '#app_inside'
+    }
+
+</script>

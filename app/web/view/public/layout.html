@@ -1,0 +1,122 @@
+{include file="public/head"}
+<style>
+    .navigation {
+        background: #2d6edb;
+    }
+
+    .head_pic {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+    }
+
+    .big_head_pic {
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+    }
+</style>
+<div id="app_framework">
+    <v-app style="min-height: 500px;">
+        <template v-if="app_inited">
+            <div class="page_max" style="background: url('{:IMG}/list_top_banner.jpg') no-repeat top center; width: 100%; height: 200px; vertical-align: middle; padding-top: 45px;">
+                <div class="fully">
+                    <img src="{:SC('site_logo')}" />
+                </div>
+            </div>
+            <div class="navigation">
+                <div class="fully">
+                    <com_navigation fill_index="1" :nav_data=" nav_data " :class_id=" GV.class_id " class="site_navigation"></com_navigation>
+                </div>
+            </div>
+            <el-container style="min-height:600px">
+                <app_inside :now_class="now_class"></app_inside>
+            </el-container>
+            <div class="footer_container mt-3">
+                <div class="fully flex_lr flex_center px-3">
+                    <div class="w10 text-center lh20" style="color:rgb(158, 153, 153);">
+                        <div>版权所有：{:SC('site_company')} 盗袭必究</div>
+                        <div>地址：{:SC('site_address')}  电话：{:SC('site_phone')}</div>
+                        <div>{:SC('site_copyright')}</div>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </v-app>
+</div>
+
+{include file="public/web_fun"}
+{include file="public/vue_template"}
+
+{__CONTENT__}
+<script>
+    var app_framework = new Vue({
+        el: '#app_framework',
+        data: {
+            app_inited: false,
+            top_time_text: '',
+            nav_data: [],
+            class_id: GV.class_id,
+            now_class: {},
+            login_show: false,
+            form: {
+                phone: '',
+                phone_code: '',
+            },
+            rules: {
+                phone: [
+                    { required: true, message: '请输入手机号', trigger: 'change' }
+                ],
+                phone_code: [
+                    { required: true, message: '请输入手机验证码', trigger: 'change' }
+                ],
+            },
+            phone_status: 0,
+            code_sended: ''
+        },
+        created: function () {
+            var _this = this,
+                _nav_data = GV.site_navigation.slice(0),
+                _now_class = {};
+
+            _nav_data.map(function (nav) {
+
+                //进一步格式化菜单
+                if (_this.class_id == nav.id) {
+                    _now_class = nav;
+                    _now_class.parent_classify = Object.assign({}, _now_class);
+                    _now_class.brother_classify = [];
+                    _nav_data.map(function (gn) {
+                        if (gn.pid == _now_class.pid) {
+                            _now_class.brother_classify.push(Object.assign({
+                                active: _now_class.id == gn.id
+                            }, gn));
+                        }
+                        if (gn.id == _now_class.pid) {
+                            _now_class.parent_classify = gn;
+                        }
+                    });
+                }
+            });
+
+
+            _this.nav_data = listToTree('id', 'pid', _nav_data.slice(0));
+            _this.now_class = _now_class;
+//            setInterval(function () {
+//                _this.top_time_text = getTime(9);
+//            }, 1000)
+        },
+        components: {
+            app_inside: typeof app_inside == 'undefined' ? { template: '<div>无可用组件，请抛出【app_inside】的变量</div>' } : app_inside
+        },
+        mounted: function () {
+            var _this = this;
+            _this.app_inited = true;
+        },
+        methods: {
+        }
+    });
+
+
+</script>
+{include file="public/footer"}

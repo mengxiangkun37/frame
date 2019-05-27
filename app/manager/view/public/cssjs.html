@@ -1,0 +1,197 @@
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+
+<!--基本插件-->
+<link href="{:COM_RES}/Font-Awesome-4.7.0/font-awesome.min.css" rel="stylesheet">
+<link href="{:COM_RES}/animate.min.css" rel="stylesheet">
+
+<!--layer 弹出组件 http://layer.layui.com/ -->
+<script src="{:COM_RES}/layer-v3.1.1/mobile/layer.js"></script>
+<!--https://www.lodashjs.com/docs/4.17.5.html-->
+
+<!--cropperjs 不依赖jquery -->
+<link href="{:COM_RES}/cropperjs/cropper.min.css" rel="stylesheet">
+<script src="{:COM_RES}/cropperjs/cropper.min.js"></script>
+
+<!--URL插件 https://github.com/websanova/js-url -->
+<script src="{:COM_RES}/url.min.js"></script>
+
+<!--编辑器插件，百度编辑器 ueditor-->
+<script src="{:JS}/ueditor/ueditor.config.js"></script>
+<script src="{:JS}/ueditor/ueditor.all.min.js?v=1.3"></script>
+
+<!--复制组件 https://clipboardjs.com/-->
+<script src="{:COM_RES}/clipboard.min.js"></script>
+
+<!--vuejs插件-->
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.10/dist/vue.min.js"></script>
+
+<!--vuetify     https://vuetifyjs.com/zh-Hans/getting-started/quick-start-->
+<link href="{:COM_RES}/vuetify/vuetify.min.css" rel="stylesheet">
+<!-- <script src="{:COM_RES}/vuetify/vuetify.min.js"></script> -->
+<script src="https://cdn.jsdelivr.net/npm/vuetify@1.5.12/dist/vuetify.min.js"></script>
+
+<!--element UI https://element.eleme.cn/#/zh-CN/component/installation-->
+<link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+<script src="https://unpkg.com/element-ui/lib/index.js"></script>
+
+<!--vue上传组件 https://lian-yue.github.io/vue-upload-component/#/zh-cn/documents-->
+<script src="{:COM_RES}/vue-upload-component.js"></script>
+<!--七牛上传组件-->
+<script src="https://cdn.jsdelivr.net/npm/qiniu-js@2.5.4/dist/qiniu.min.js"></script>
+
+<!--axios-->
+<script src="{:COM_RES}/axios.min.js"></script>
+
+<!--代码美化    https://prismjs.com/-->
+<script src="{:COM_RES}/prism/prism.js"></script>
+<link href="{:COM_RES}/prism/prism.css" rel="stylesheet">
+
+<!--excel导入组件   https://github.com/SheetJS/js-xlsx -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.14.1/dist/xlsx.full.min.js"></script>
+
+<!--拖拽组件：Sortable + Vue.Draggable   https://github.com/SortableJS/Vue.Draggable-->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.8.4/Sortable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Vue.Draggable/2.20.0/vuedraggable.umd.min.js"></script>
+
+<!-- vue-slicksort -->
+<script src="https://unpkg.com/vue-slicksort@latest/dist/vue-slicksort.min.js"></script>
+
+<!-- echarts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/4.2.1/echarts.min.js"></script>
+
+<!--打印组件 http://printjs.crabbly.com/ -->
+<link href="{:COM_RES}/print/print.min.css" rel="stylesheet">
+<script src="{:COM_RES}/print/print.min.js"></script>
+
+<!-- element -->
+<link href="{:COM_RES}/element/element.css" rel="stylesheet">
+<script src="{:COM_RES}/element/index.js"></script>
+
+
+<!--自定义插件-->
+<link href="{:COM_RES}/common.css" rel="stylesheet">
+<link href="{:IMG}/admin.css" rel="stylesheet" type="text/css" />
+<script src="{:COM_RES}/common.js?v=2.1"></script>
+<script src="{:JS}/admin.js"></script>
+<script>
+//全局变量
+var GV = {
+	SITE_URL: "{:SC('site_url')}/",
+	IMG_ROOT: "{:IMG}/",
+	JS_ROOT: "{:JS}/",
+	MODULE_NAME: "{:MODULE_NAME}",
+	CONTROLLER_NAME: "{:CONTROLLER_NAME}",
+	ACTION_NAME: "{:ACTION_NAME}",
+	PAGE_URL: "{:url(ACTION_NAME)}",
+
+	UPLOAD_URL: "{:url('Upload/upload_local')}",
+    UPLOAD_FILE_SIZE: "{:SC('uploadmaxsize')}",
+    UPLOAD_CROPPER_URL: "{:url('Upload/up_cropper')}",
+    UPLOAD_UEDITOR_URL: "{:url('Upload/ueditor')}",
+
+    RESOURCE_URL: "{:url('resource/resource')}",
+    uploadBtnArray: [],  //上传组件序列组，以为display none时开启提供刷新队列
+
+    //新参数
+    BASE_URL: '{:url("/")}',
+    API_URL: '{:url("api/index")}',
+
+    UPLOAD_TYPE: "{:SC('upload_type')}",
+    LOCAL_UPLOAD_URL: "{:url('Upload/up_local')}",
+    UPLOAD_MAX_SIZE: "{:SC('uploadmaxsize')}" * 1024,   //MB
+    QINIU_UPLOAD_SERVER: "{:SC('qiniu_upload_server')}",
+    QINIU_DOMAIN: "{:SC('qiniu_domain')}",
+    QN_TOKEN_URL: "{:url('Upload/build_qiniu_token')}",
+
+    LOGIN_URL: '{:url("login/index")}',
+    LOGIN_DEFAULT: '{:url("index/index")}',
+    APP_DEBUG: '{:APP_DEBUG}' == 1,
+    DEFAULT_IMG: {
+        avatar: '{:IMG}/avatar_none.png',
+        upfile: '{:IMG}/no_thumb.png'
+    },
+
+
+    accept_list: {
+        all: {
+            title: 'All',
+            cn: '全部',
+            extensions: '*',
+            mimeTypes: ''
+        },
+        image: {
+            title: 'Images',
+            cn: '图片',
+            extensions: 'gif,jpg,jpeg,bmp,png,ico',
+            mimeTypes: 'image/gif,image/jpeg,image/jpg,image/png'
+        },
+        video: {
+            title: 'Videos',
+            cn: '视频',
+            extensions: 'wmv,asf,asx,rm,rmvb,ram,avi,mpg,dat,mp4,mpeg,divx,m4v,mov,qt,flv,f4v,wma,ra,3gp,3g2,dv,vob,mkv,ts,swf,fla',
+            mimeTypes: 'video/wmv,video/avi,video/mp4,video/mpeg,video/m4v,video/flv,application/x-shockwave-flash'
+        },
+        audio: {
+            title: 'Audios',
+            cn: '音频',
+            extensions: 'mp3,wav,m4a,wma',
+            mimeTypes: 'audio/mp3,audio/wav,audio/m4a,audio/wma'
+        },
+        doc: {
+            title: 'Docs',
+            cn: '文档',
+            extensions: 'ppt,pptx,doc,docx,xls,xlsx,pdf,txt',
+            mimeTypes: 'application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf'
+        },
+        pdf: {
+            title: 'Pdf',
+            cn: 'pdf文档',
+            extensions: 'pdf',
+            mimeTypes: 'application/pdf'
+        },
+        file: {
+            title: 'Files',
+            cn: '压缩包',
+            extensions: 'zip,rar',
+            mimeTypes: 'application/zip,application/x-rar-compressed'
+        }
+    }
+};
+
+Vue.prototype.$GV = GV;
+
+Vue.prototype.$redirect = function ( url ) {
+   if ( url === 0 ){
+       reloadPage()
+   }else if( url == -1){
+       history.back();
+   } else {
+       redirect( url )
+   }
+};
+
+Vue.prototype.$preview = function ( url ) {
+    file_preview( url );
+};
+
+Vue.prototype.$copy = function ( e, str ) {
+    var clipboard = new ClipboardJS(e.target, {text: function () { console.log(str); return str;} });
+    clipboard.on('success', function () {
+        api.tips('已复制', 'cyan', 3);
+        clipboard.off('error');
+        clipboard.off('success');
+        clipboard.destroy();
+    });
+    clipboard.on('error', function() {
+        api.tips('该浏览器不支持自动复制', 'error', 3);
+        clipboard.off('error');
+        clipboard.off('success');
+        clipboard.destroy()
+    });
+    clipboard.onClick(e)
+};
+
+//上传组件使用
+Vue.component('file_upload', VueUploadComponent)
+
+</script>

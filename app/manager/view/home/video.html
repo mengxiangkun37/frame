@@ -1,0 +1,160 @@
+<style type="text/css">
+
+</style>
+
+<template id="app_inside">
+    <div>
+        <!--页面标题栏-->
+        <v-toolbar flat color="white">
+            <v-toolbar-title>视频管理</v-toolbar-title>
+            <v-divider class="mx-2" inset vertical></v-divider>
+            <v-menu :close-on-content-click="false" offset-y slide-x max-width="500">
+                <v-btn slot="activator" color="warning" dark>
+                    <v-icon class="mr-2">help_outline</v-icon> 帮助
+                </v-btn>
+                <div class="pa-2 bg-white">
+                    <ol>
+
+                    </ol>
+                </div>
+            </v-menu>
+            <v-spacer></v-spacer>
+            <v-btn @click="open_form_create()" color="primary" dark class="mb-2"><i class="fa fa-plus mr-1"></i> 新增视频</v-btn>
+
+            <v-dialog v-model="form_opened_create" max-width="500px" lazy>
+                <v-card>
+                    <v-card-title>
+                        <div>
+                            <div class="title">新增视频</div>
+                        </div>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text>
+                        <v-form ref="ref_form_create" lazy-validation>
+                            <v-layout>
+                                <v-flex xs12>
+                                    <v-text-field v-model="form_fields_create.title" label="视频标题" :rules="[$com_rules.required]"></v-text-field>
+                                </v-flex>
+                            </v-layout>
+                            <v-layout>
+                                <v-flex xs12>
+                                    <com_qiniu v-model="form_fields_create.url" label="上传视频" :rules="[$com_rules.required]"></com_qiniu>
+                                </v-flex>
+                                <div v-if='form_fields_create.url'>
+                                    <video id="video_create" @canplay="create_video_duration()" :src="form_fields_create.url"
+                                        controls height='0'></video>
+                                </div>
+                            </v-layout>
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="blue darken-1" flat @click.native="form_submit_create()">提交保存</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+        </v-toolbar>
+        <div class="ma-3">
+            <v-layout row wrap>
+                <v-flex xs4 v-for="item in video_list">
+                    <div class="pa-2">
+                        <div class="text-xs-center mb-2 f16">{{item.title}}</div>
+                        <video :src="item.url" controls width="100%"></video>
+                        <template v-if="item.status == 1">
+                            <v-btn flat large disabled>使用中</v-btn>
+                        </template>
+                        <template v-if="item.status == 0">
+                            <v-btn @click="set_useing(item)" color="primary" dark class="mb-2"><i class="fa fa-check mr-1"></i>
+                                启用</v-btn>
+                            <v-btn @click="video_delete(item)" color="blue-grey lighten-1" dark class="mb-2"><i class="fa fa-trash-o mr-1"></i>
+                                删除</v-btn>
+                        </template>
+                    </div>
+                </v-flex>
+            </v-layout>
+        </div>
+
+    </div>
+</template>
+
+
+<script>
+
+    var app_inside = {
+        data: function () {
+            return {
+                video_list: [],
+                //业务数据
+                //新增的表单
+                form_opened_create: false,
+                form_fields_create: {
+                    duration: 0
+                },
+            }
+        },
+        created: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        computed: {
+
+        },
+        methods: {
+            page_init: function () {
+                var _this = this;
+                _this.load_data();
+            },
+
+            load_data: function (reload, _search) {
+                var _this = this;
+                api.send('video_list', '', function (res) {
+                    _this.video_list = res;
+                }, null, { loading_show: false });
+            },
+
+            //业务方法=======
+            open_form_create: function () {
+                var _this = this;
+                _this.form_opened_create = true;
+            },
+            form_submit_create: function () {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form_fields_create);
+                if (this.$refs.ref_form_create.validate()) {
+                    api.send('video_create', _fields, function (res) {
+                        _this.$refs.ref_form_create.reset();
+                        _this.form_opened_create = false;
+                        _this.load_data();
+                        api.tips('新增成功', 'success');
+                    }, null, { loading_show: false });
+                }
+            },
+            //获取视频长度
+            create_video_duration: function () {
+                var _this = this,
+                    video_info = document.getElementById("video_create");
+                _this.form_fields_create.duration = parseInt(video_info.duration);
+            },
+            set_useing: function (item) {
+                var _this = this;
+                api.confirm('确认启用吗？', '启用后前台将使用该视频', function () {
+                    api.send('set_video_status', { id: item.id }, function (res) {
+                        _this.load_data();
+                        api.tips('启用成功', 'success');
+                    }, null, { loading_show: false });
+                });
+            },
+            video_delete: function (item) {
+                var _this = this;
+                api.confirm('确认删除吗？', '删除后无法恢复', function () {
+                    api.send('video_delete', { id: item.id }, function (res) {
+                        _this.load_data();
+                        api.tips('删除成功', 'success');
+                    }, null, { loading_show: false });
+                });
+            }
+        },
+        template: '#app_inside'
+    }
+
+</script>

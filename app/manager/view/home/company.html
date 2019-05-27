@@ -1,0 +1,309 @@
+<style type="text/css">
+
+</style>
+
+<template id="app_inside">
+    <div>
+        <!--页面标题栏-->
+        <v-toolbar flat color="white">
+            <v-toolbar-title>单位协税者</v-toolbar-title>
+            <v-divider class="mx-2" inset vertical></v-divider>
+            <v-spacer></v-spacer>
+        </v-toolbar>
+
+        <v-dialog v-model="open_info" max-width="700px">
+            <v-card>
+                <v-card-title>
+                    <div class="w9">
+                        <div class="title">{{info_detail.c_name}}的信息</div>
+                    </div>
+                    <v-spacer></v-spacer>
+                    <i class="fa fa-close f18 text-muted" @click="open_info = false"></i>
+                </v-card-title>
+                <v-divider></v-divider>
+                <div class="ma-3 f15">
+                    <v-layout row class="mb-2">
+                        <v-flex xs6>
+                            <div class="mr-1 text-muted">单位名称：</div>
+                            <div>{{info_detail.c_name}}</div>
+                        </v-flex>
+                        <v-flex xs6>
+                            <div class="mr-1 text-muted">统一社会信用代码：</div>
+                            <div>{{ info_detail.c_credit_code }}</div>
+                        </v-flex>
+                    </v-layout>
+                    <v-layout row class="mb-2">
+                        <v-flex xs6>
+                            <div class="mr-1 text-muted">单位类型：</div>
+                            <div class="mr-4">{{ info_detail.c_unit_type }}</div>
+                        </v-flex>
+                        <v-flex xs6>
+                            <div class="mr-1 text-muted">注册资本/出资总额（万元）：</div>
+                            <div class="mr-4">{{ info_detail.c_capital }}</div>
+                        </v-flex>
+                    </v-layout>
+                    <v-layout row class="mb-2">
+                        <v-flex xs6>
+                            <div class="mr-1 text-muted">成立日期：</div>
+                            <div class="mr-4">{{ info_detail.c_found_time | get_time(7) }}</div>
+                        </v-flex>
+                        <v-flex xs6>
+                            <div class="mr-1 text-muted">电子邮箱：</div>
+                            <div class="mr-4">{{ info_detail.c_email }}</div>
+                        </v-flex>
+                    </v-layout>
+                    <v-layout row class="mb-2">
+                        <v-flex xs6>
+                            <div class="mr-1 text-muted">代账业务收入：</div>
+                            <div class="mr-4">{{ info_detail.c_service_income }}</div>
+                        </v-flex>
+                        <v-flex xs6>
+                            <div class="mr-1 text-muted">上年度经营收入：</div>
+                            <div class="mr-4">{{ info_detail.c_lastyear_income }}</div>
+                        </v-flex>
+                    </v-layout>
+                    <v-layout row class="mb-2">
+                        <v-flex xs6>
+                            <div class="mr-1 text-muted">单位职工数量：</div>
+                            <div class="mr-4">{{ info_detail.c_workers_number }}</div>
+                        </v-flex>
+                        <v-flex xs6>
+                            <div class="mr-1 text-muted">专职会计数量：</div>
+                            <div class="mr-4">{{ info_detail.c_accounting_number }}</div>
+                        </v-flex>
+                        <v-flex xs4>
+                            <div class="mr-1 text-muted">服务客户数量：</div>
+                            <div class="mr-4">{{ info_detail.c_customer_number }}</div>
+                        </v-flex>
+                    </v-layout>
+                    
+                    <v-layout row class="mb-2">
+                        <v-flex xs4>
+                            <div class="mr-1 text-muted">单位法人：</div>
+                            <div class="mr-4">{{ info_detail.c_legal_person }}</div>
+                        </v-flex>
+                        <v-flex xs4>
+                            <div class="mr-1 text-muted">法人身份证：</div>
+                            <div class="mr-4">{{ info_detail.c_legal_person_idnumber }}</div>
+                        </v-flex>
+                        <v-flex xs4>
+                            <div class="mr-1 text-muted">联系方式：</div>
+                            <div class="mr-4">{{ info_detail.c_legal_person_phone }}</div>
+                        </v-flex>
+                    </v-layout>
+                    <v-layout row class="mb-2">
+                        <v-flex xs4>
+                            <div class="mr-1 text-muted">服务团联络人：</div>
+                            <div class="mr-4">{{ info_detail.c_liaison_person }}</div>
+                        </v-flex>
+                        <v-flex xs4>
+                            <div class="mr-1 text-muted">联系方式：</div>
+                            <div class="mr-4">{{ info_detail.c_liaison_person_phone }}</div>
+                        </v-flex>
+                        <v-flex xs4>
+                            <div class="mr-1 text-muted">微信：</div>
+                            <div class="mr-4">{{ info_detail.c_liaison_person_wx }}</div>
+                        </v-flex>
+                    </v-layout>
+                    <v-layout row class="mb-2">
+                        <v-flex xs6>
+                            <div class="mr-1 text-muted">是否登记注册过志愿者：</div>
+                            <div class="mr-4">{{ info_detail.c_regd }}</div>
+                        </v-flex>
+                        <v-flex xs6>
+                            <div class="mr-1 text-muted">原注册机构：</div>
+                            <div class="mr-4">{{ info_detail.c_regd_name }}</div>
+                        </v-flex>
+                    </v-layout>
+                    <v-divider></v-divider>
+                    <div class="ma-3">
+                        <v-layout row class="mb-3">
+                            <v-flex xs2>
+                                <div class="text-muted">所在地：</div>
+                            </v-flex>
+                            <v-flex xs10>
+                                <div>{{info_detail.province}}{{info_detail.city}}{{info_detail.area}}</div>
+                            </v-flex>
+                        </v-layout>
+                        <v-layout row class="mb-3">
+                            <v-flex xs2>
+                                <div class="text-muted">详细地址：</div>
+                            </v-flex>
+                            <v-flex xs10>
+                                <div>{{info_detail.address}}</div>
+                            </v-flex>
+                        </v-layout>
+                        <v-layout row class="mb-3">
+                            <v-flex xs3>
+                                <div class="text-muted">业务范围：</div>
+                            </v-flex>
+                            <v-flex xs9>
+                                <div>{{info_detail.c_business_range}}</div>
+                            </v-flex>
+                        </v-layout>
+                        <v-layout row class="mb-3">
+                            <v-flex xs3>
+                                <div class="text-muted">自愿提供的服务内容：</div>
+                            </v-flex>
+                            <v-flex xs9>
+                                <div>{{info_detail.c_service_content}}</div>
+                            </v-flex>
+                        </v-layout>
+                    </div>
+                    
+                </div>
+                <v-card-actions>
+                    <v-spacer></v-spacer>
+                    <v-btn color="darken-1" flat @click="open_info = false">关闭</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
+
+        <com_search ref="search" :search_config.sync=" search " :auto_make="{ order: 2, page_size: 1}" @do_search=" load_data "></com_search>
+        <!--表格模板-->
+        <v-data-table no-data-text="暂无数据" :headers="headers" :items="data_list" :pagination.sync="pagination" :loading="loading"
+            hide-actions>
+            <template slot="items" slot-scope="props">
+                <td>{{ props.item.c_name }}</td>
+                <td>{{ props.item.c_credit_code }}</td>
+                <td>{{ props.item.c_unit_type }}</td>
+                <td>{{ props.item.c_capital }}</td>
+                <td>{{ props.item.c_found_time | get_time(7)}}</td>
+                <td v-if="props.item.status>-1">
+                    <div class="flex">
+                        <v-btn flat icon color="primary" @click="show_info(props.item)">
+                            <v-icon>account_circle</v-icon>
+                        </v-btn>
+                        <v-btn flat icon color="error" @click="expel(props.item.id)">
+                            <v-icon>remove</v-icon>
+                        </v-btn>
+                    </div>
+                </td>
+                <td v-else>
+                    <div class="flex">
+                        <v-btn flat icon color="primary" @click="show_info(props.item)">
+                            <v-icon>account_circle</v-icon>
+                        </v-btn>
+                        <v-btn flat icon color="green" @click="recovery(props.item.id)">
+                            <v-icon dark>add</v-icon>
+                        </v-btn>
+                    </div>
+                </td>
+            </template>
+        </v-data-table>
+        <v-container fluid class="px-0 py-2 bg-white">
+            <v-layout row>
+                <v-flex xs12 md6>
+                </v-flex>
+                <v-flex xs6 md6 align-center justify-end>
+                    <div class="d-inlineblock f12 text-muted">总 {{this.total_count}} 条</div>
+                    <v-pagination :disabled="loading" v-model="page" @input=" load_data() " :length="total_pages"
+                        total-visible="9"></v-pagination>
+                </v-flex>
+            </v-layout>
+        </v-container>
+    </div>
+</template>
+<script>
+    var app_inside = {
+        data: function () {
+            return {
+                headers: [
+                    { text: '单位名称', value: 'c_name', sortable: false },
+                    { text: '统一社会信用代码', value: 'c_credit_code', sortable: false },
+                    { text: '单位类型', value: 'c_unit_type', sortable: false },
+                    { text: '注册资本', value: 'c_capital', sortable: false },
+                    { text: '成立日期', value: 'c_found_time', sortable: false },
+                    { text: '操作', value: 'id', sortable: false, width: '100px' }
+                ],
+                pagination: {
+                    rowsPerPage: -1,
+                    sortBy: null
+                },
+                selected: [],
+
+                page_size: 20,
+                page: 1,
+                total_count: 0,
+                data_list: [],
+                loading: false,
+                search: [
+                    {
+                        field: 'c_name',
+                        type: 'text',
+                        label: '单位名称查找',
+                        value: null
+                    }
+                ],
+                open_info: false,
+                info_detail: {}
+            }
+        },
+        created: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        computed: {
+            total_pages: function () {  //分页的总页数获取，不用动
+                if (this.page_size == null || this.total_count == null) return 0;
+                return Math.ceil(this.total_count / this.page_size)
+            }
+        },
+        methods: {
+
+            //页面初始化，推荐统一编写，比较清晰
+            page_init: function () {
+                var _this = this;
+                _this.load_data();
+            },
+            //表格加载与方法
+            load_data: function (reload) {
+                var _this = this,
+                    _fields = {
+                        page: reload ? 1 : _this.page,
+                        page_size: _this.page_size,
+                        search: arguments[1]
+                    };
+                //通用方法
+                if (typeof arguments[1] == 'undefined') { _this.$nextTick(function () { _this.$refs.search.do_search(); }); return false; }
+                if (reload) _this.page = 1;
+                if (_this.loading) return false;
+                _fields.search.push({ field: 'type', type: 'select', value: 2 });
+                _this.loading = true;
+                //开始读取数据
+                api.send('get_member_list', _fields, function (res) {
+                    _this.total_count = res.total_count;
+                    _this.data_list = res.data_list || [];
+                    _this.loading = false;
+                }, null, { loading_show: false });
+            },
+            expel: function (id) {
+                var _this = this;
+                api.confirm('确认除名吗？', '', function () {
+                    api.send('expel_member', { id: id }, function (res) {
+                        api.tips('除名成功！', 'success');
+                        _this.$refs.search.do_search();
+                    }, null, { loading_show: false });
+                });
+            },
+            recovery: function (id) {
+                var _this = this;
+                api.confirm('确认恢复身份吗？', '', function () {
+                    api.send('recovery_member', { id: id }, function (res) {
+                        api.tips('恢复成功！', 'success');
+                        _this.$refs.search.do_search();
+                    }, null, { loading_show: false });
+                });
+            },
+            show_info: function (item) {
+                var _this = this;
+                _this.info_detail = Object.assign({}, item);
+                _this.open_info = true;
+            }
+
+        },
+        template: '#app_inside'
+    }
+
+</script>

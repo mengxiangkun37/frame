@@ -1,0 +1,291 @@
+<style type="text/css">
+    .img_border {
+        position: relative;
+        border: 1px solid #ccc9c9;
+        width: 210px;
+        overflow: hidden;
+    }
+
+    .img_border img {
+        width: 210px;
+        height: 150px;
+    }
+
+    .file_mask {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 99;
+        background-color: rgba(112, 110, 110, 0.616);
+
+    }
+
+    .mask_icon {
+        line-height: 200px;
+    }
+</style>
+
+<template id="app_inside">
+    <div>
+        <!--页面标题栏-->
+        <v-toolbar flat color="white">
+            <v-toolbar-title>资源管理</v-toolbar-title>
+            <v-divider class="mx-2" inset vertical></v-divider>
+            <v-spacer></v-spacer>
+        </v-toolbar>
+        <div class="ma-5">
+            <v-layout row class="text-xs-center">
+                <v-flex xs1 class="pa-3">
+                    分组\类型
+                </v-flex>
+                <v-flex xs10>
+                    <div v-for="item in file_type_list" :class="item.selected?'pa-3 hand text-success':'pa-3 hand'"
+                        :key="item.id" @click="select_file_type(item)">
+                        {{item.cn}}
+                    </div>
+                </v-flex>
+                <v-flex xs1>
+                    <v-btn color="primary" dark><i class="fa fa-plus mr-1"></i>
+                        上传文件</v-btn>
+                </v-flex>
+            </v-layout>
+            <v-divider></v-divider>
+            <v-layout row class="mt-3 ">
+                <v-flex xs1>
+                    <div>
+                        <div :class="group_all_style? 'pa-3 text-xs-center hand text-success':'pa-3 text-xs-center hand ' "
+                            @click="select_group('all')">全部分组</div>
+                        <div v-for="item in file_group_list" :key="item.id" :class="item.selected? 'pa-3 text-xs-center hand text-success':'pa-3 text-xs-center hand ' "
+                            @click="select_group(item)">{{item.group_name}}</div>
+                    </div>
+                </v-flex>
+                <v-flex xs11>
+                    <v-layout row wrap>
+                        <v-flex xs2 class="pa-2" v-for="item in data_list" :key="item.id" @click.stop="check_selected(item)">
+                            <div class="img_border">
+                                <div class="file_mask text-xs-center" v-model="selected" v-if="item.selected">
+                                    <v-icon class="mr-2 mask_icon" color="green">check_circle</v-icon>
+                                </div>
+                                <div style="height:150px;">
+                                    <img :src="item.url || '/z/web_vue/img/pic_default.png' " class="file_img" alt="图片不存在"
+                                        :title="item.filename">
+                                </div>
+                                <div class="mt-1 ml-2">{{item.filename}}</div>
+                                <div class="my-1 ml-2 text-muted">{{item.time | get_time(2)}}</div>
+                            </div>
+                        </v-flex>
+                    </v-layout>
+                </v-flex>
+            </v-layout>
+        </div>
+        <div class="bg-white pa-1 ma-5">
+            <v-layout row>
+                <v-flex xs6>
+                    <v-menu top offset-y max-height="300" :disabled="selected.length == 0">
+                        <v-btn slot="activator" :disabled="selected.length == 0">
+                            <i class="fa fa-long-arrow-right mr-1"></i>
+                            <span>批量移动</span>
+                            <span v-if=" selected.length " class="ml-1">({{selected.length}})</span>
+                        </v-btn>
+                        <v-list>
+                            <v-list-tile v-for="(item, index) in file_group_list" :key="index" @click=" batch_move( item ) ">
+                                <v-list-tile-title>{{ item.group_name }}</v-list-tile-title>
+                            </v-list-tile>
+                        </v-list>
+                    </v-menu>
+                    <v-btn color="error" @click=" batch_delete() " :disabled="selected.length == 0">
+                        <i class="fa fa-remove mr-1"></i>
+                        <span>批量删除</span>
+                        <span v-if=" selected.length " class="ml-1">({{selected.length}})</span>
+                    </v-btn>
+                </v-flex>
+                <v-flex xs6 align-center justify-end>
+                    <div class="d-inlineblock f12 text-muted">总 {{this.total_count}} 条</div>
+                    <v-pagination :disabled="loading" v-model="page" @input=" load_data() " :length="total_pages"
+                        total-visible="9"></v-pagination>
+                </v-flex>
+            </v-layout>
+        </div>
+
+    </div>
+</template>
+
+
+<script>
+
+
+
+    var app_inside = {
+        data: function () {
+            return {
+                //翻页的配置，必须写
+                pagination: {
+                    rowsPerPage: -1,     //显示全部，推荐-1
+                    sortBy: null         //默认排序字段，推荐设置，descending = true && sortBy = 'id' 即 id desc
+                },
+
+                //分页的配置，可自定义
+                page_size: 12,
+                page: 1,
+                total_count: 0,
+                data_list: [],
+                loading: false,
+
+                selected: [],
+
+                search_group: {},
+                search_file: {},
+                group_all_style: true,
+
+                items: [
+                    { src: 'https://cdn.vuetifyjs.com/images/carousel/squirrel.jpg' },
+                ],
+
+                file_type_list: GV.accept_list,
+
+                file_group_list: []
+
+            }
+        },
+        mounted: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        computed: {
+            total_pages: function () {  //分页的总页数获取，不用动
+                if (this.page_size == null || this.total_count == null) return 0;
+                return Math.ceil(this.total_count / this.page_size)
+            }
+        },
+        methods: {
+
+            //页面初始化，推荐统一编写，比较清晰
+            page_init: function () {
+                var _this = this;
+                _this.load_data();
+                _this.get_file_group_list();
+                for (var key in _this.file_type_list) {
+                    if (key == 'all') {
+                        _this.file_type_list[key].selected = true;
+                    }
+                }
+            },
+
+            load_data: function (reload) {
+                var _this = this,
+                    _fields = {
+                        page: reload ? 1 : _this.page,
+                        page_size: _this.page_size,
+                        search: []
+                    };
+
+                _fields.search.push(_this.search_file);
+                _fields.search.push(_this.search_group);
+
+                if (reload) _this.page = 1;
+                if (_this.loading) return false;
+                _this.loading = true;
+
+                api.send('get_files_list', _fields, function (res) {
+                    _this.total_count = res.total_count;
+                    _this.data_list = res.data_list || [];
+                    _this.data_list.map(function (d) {
+                        d.selected = false;
+                    })
+                    _this.loading = false;
+                });
+            },
+
+            get_file_group_list: function () {
+                var _this = this;
+                api.send('get_file_group_list', '', function (res) {
+                    _this.file_group_list = res || [];
+                }, null, { loading_show: false });
+            },
+            select_file_type: function (item) {
+                var _this = this;
+                for (var key in _this.file_type_list) {
+                    _this.file_type_list[key].selected = false;  
+                }
+                if (item.extensions == '*') {
+                    item.selected = true;
+                    _this.search_file = {}
+                } else {
+                    item.selected = true;
+                    _this.search_file = {
+                        field: 'ext',
+                        type: 'selectin',
+                        value: item.extensions
+                    }
+                }
+                _this.load_data(true);
+            },
+            select_group: function (item) {
+                var _this = this;
+                _this.file_group_list.map(function (f) {
+                    f.selected = false;
+                });
+                if (item == 'all') {
+                    _this.group_all_style = true;
+                    _this.search_group = {};
+                } else {
+                    _this.group_all_style = false;
+                    item.selected = true;
+                    _this.search_group = {
+                        field: 'group_id',
+                        type: 'select',
+                        value: item.id
+                    }
+                }
+                _this.load_data(true);
+            },
+            check_selected: function (item) {
+                var _this = this;
+                item.selected = !item.selected;
+                if (item.selected && _this.selected.indexOf(item.id) == -1) {
+                    _this.selected.push(item.id);
+                }
+                if (!item.selected && _this.selected.indexOf(item.id) != -1) {
+                    _this.array_remove(_this.selected, item.id);
+                }
+                console.log(_this.selected);
+            },
+            array_remove: function (list, val) {
+                var index = list.indexOf(val);
+                if (index > -1) {
+                    list.splice(index, 1);
+                }
+            },
+            batch_move: function (item) {
+                var _this = this;
+                if (!_this.selected.length || !item.id) {
+                    api.tips('先选择再操作', 'cyan');
+                    return false;
+                }
+                api.send('file_move', { group_id: item.id, ids: _this.selected }, function (res) {
+                    _this.selected = [];
+                    _this.load_data();
+                    api.tips('成功移动了 ' + res + ' 条记录', 'success');
+                });
+            },
+            batch_delete: function () {
+                var _this = this;
+                if (!_this.selected.length) {
+                    api.tips('先选择再操作', 'cyan');
+                    return false;
+                }
+                api.confirm('确认删除吗？', '删除后无法恢复', function () {
+                    api.send('file_delete', { id: _this.selected }, function (res) {
+                        _this.selected = [];
+                        _this.load_data();
+                        api.tips('成功删除了' + res + '条记录', 'success');
+                    });
+                });
+            },
+        },
+        template: '#app_inside'
+    }
+
+</script>

@@ -1,0 +1,195 @@
+<style type="text/css">
+    code, kbd, pre, samp {
+        font-weight: normal;
+        width: 100%;
+        box-shadow: none;
+    }
+</style>
+
+<template id="app_inside">
+    <div>
+        <!--页面标题栏-->
+        <v-toolbar flat color="white">
+            <v-toolbar-title>日志管理</v-toolbar-title>
+            <v-divider class="mx-2" inset vertical></v-divider>
+            <v-menu :close-on-content-click="false" offset-y slide-x max-width="500">
+                <v-btn slot="activator" color="warning" dark>
+                    <v-icon class="mr-2">help_outline</v-icon> 帮助
+                </v-btn>
+                <div class="pa-2 bg-white">
+                    <ol>
+                        <li>api接口操作生成日志</li>
+                    </ol>
+                </div>
+            </v-menu>
+            <v-spacer></v-spacer>
+
+            <v-btn @click=" clear_log() " color="cyan" dark><i class="fa fa-plus-square mr-1"></i> 清空日志</v-btn>
+        </v-toolbar>
+
+        <v-dialog v-model="input_show" max-width="800px">
+            <v-card>
+                <v-card-title>
+                    <div>
+                        <div class="title">请求信息</div>
+                    </div>
+                </v-card-title>
+                <v-divider></v-divider>
+                <v-card-text v-html="input_content">
+                </v-card-text>
+                <v-card-actions>
+                    <v-spacer></v-spacer>
+                    <v-btn color="blue darken-1" flat @click.native=" input_show = false ">关闭</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+
+     
+        <com_search ref="search" :search_config.sync=" search " @do_search=" load_data "></com_search>
+        <!--表格模板-->
+        <v-data-table :headers="headers" :items="data_list" no-data-text="暂无数据" :pagination.sync="pagination" :loading="loading"
+            hide-actions>
+            <template slot="items" slot-scope="props">
+                <td>{{ props.item.api_name }}</td>
+                <td>{{ props.item.controller }}</td>
+                <td>{{ props.item.code }}</td>
+                <td>{{ props.item.ctime | get_time(2)}}</td>
+                <td>{{ props.item.user_id }}</td>
+                <td>
+                    <v-icon class="mr-2" @click.stop="open_input( props.item.input )">donut_small</v-icon>
+                    <v-icon @click.stop="delete_selected(props.item)">delete</v-icon>
+                </td>
+            </template>
+        </v-data-table>
+
+        <div class="bg-white pa-1 text-xs-right">
+            <v-pagination :disabled="loading" v-model="page" @input=" load_data() " :length="total_pages" total-visible="9"></v-pagination>
+        </div>
+    </div>
+</template>
+
+
+<script>
+
+
+
+    var app_inside = {
+        data: function () {
+            return {
+                //表头，按字义理解，参考：https://vuetifyjs.com/zh-Hans/components/data-tables
+                headers: [
+                    { text: 'API接口', value: 'api_name', width: '200px', sortable: false },
+                    { text: '所属控制器', value: 'controller', sortable: false },
+                    { text: 'code', value: 'code', sortable: false },
+                    { text: '操作时间', value: 'utime', width: '150px', sortable: false },
+                    { text: '执行人', value: 'user', width: '150px', sortable: false },
+                    { text: '操作', value: 'id', width: '150px', sortable: false }
+                ],
+
+                //翻页的配置，必须写
+                pagination: {
+                    rowsPerPage: -1,     //显示全部，推荐-1
+                    sortBy: null         //默认排序字段，推荐设置，descending = true && sortBy = 'id' 即 id desc
+                },
+
+                //分页的配置，可自定义
+                page_size: 20,
+                page: 1,
+                total_count: 0,
+                data_list: [],
+                loading: false,
+
+                // 搜索配置，只是为了简单表单的开发方便，也可以自行定制，配合<com_search/>组件
+                // 配置说明：field，需要配置正确； value，不提交后台一定要设置 null，发送前会检测null值； list 是数组形式，可手动初始化，或指定list_source组件将发起ajax请求取回列表，需要后台给 text、value 形式的数组
+                // 在发送给后台前，会判定 type ，，后台抽取有效的 field 与 value 加入到 where 查询中，具体可见后台代码；
+                search: [ {
+                    field: 'code',
+                    type: 'text',
+                    label: 'code标识',
+                    value: null
+                },
+                {
+                    field: 'controller',
+                    type: 'text',
+                    label: '控制器名',
+                    value: null
+                }],
+
+                input_show: false,
+                input_content: ''
+
+            }
+        },
+        computed: {
+            total_pages: function () {  //分页的总页数获取，不用动
+                if (this.page_size == null || this.total_count == null) return 0;
+                return Math.ceil(this.total_count / this.page_size)
+            }
+        },
+        mounted: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        methods: {
+
+            //页面初始化，推荐统一编写，比较清晰
+            page_init: function () {
+                var _this = this;
+                _this.load_data();
+            },
+            //表格加载与方法
+            load_data: function (reload) {
+                var _this = this,
+                    _fields = {
+                        page: reload ? 1 : _this.page,
+                        page_size: _this.page_size,
+                        search: arguments[1]
+                    };
+                if (typeof arguments[1] == 'undefined') { _this.$nextTick(function () { _this.$refs.search.do_search(); }); return false; }
+                //通用方法
+                if ( reload ) _this.page = 1;
+                if ( _this.loading ) return false;
+                _this.loading = true;
+                //开始读取数据
+                api.send('log_list', _fields, function (res) {
+                    _this.total_count = res.total_count;
+                    _this.data_list = res.data_list || [];
+                    _this.loading = false;
+                }, null, { loading_show: false });
+            },
+
+            //业务方法=======
+
+            delete_selected: function (item) {
+                var _this = this;
+                api.confirm('确认删除吗？', '删除后无法恢复', function () {
+                    api.send('log_delete', { id: item.id }, function (res) {
+                        _this.$refs.search.do_search();
+                        api.tips('删除成功', 'success');
+                    });
+                });
+
+            },
+            open_input: function (input) {
+                var _this = this;
+                _this.input_content = '<pre><code class="language-php">'+input+'</code></pre>';
+                _this.$nextTick( function () {
+                    Prism.highlightAll();
+                    _this.input_show = true;
+                })
+
+            },
+            clear_log: function(){
+                var _this = this;
+                api.confirm('确认清空吗？', '清空后无法恢复', function () {
+                    api.send('clear_log', '', function (res) {
+                        _this.$refs.search.do_search();
+                        api.tips('清空成功', 'success');
+                    });
+                });
+            }
+        },
+        template: '#app_inside'
+    }
+
+</script>

@@ -1,0 +1,272 @@
+<script>
+    var GV = {
+        SITE_URL: "{:SC('site_url')}/",
+        IMG_ROOT: "{:IMG}/",
+        JS_ROOT: "{:JS}/",
+        MODULE_NAME: "{:MODULE_NAME}",
+        CONTROLLER_NAME: "{:CONTROLLER_NAME}",
+        ACTION_NAME: "{:ACTION_NAME}",
+        PAGE_URL: "{:url(ACTION_NAME)}",
+
+
+        sync_rate: '{:SC("sync_rate")}',
+        try_duration: '{:SC("try_duration")}',
+
+        site_navigation: {$site_navigation},
+
+        member_id: '{$member_id}' || 0,
+        member_name: '{$member_name}',
+        member_info:{$member_info},
+        class_id: '{$classid}' || 0,
+        arc_id: "{$arcid}" || 0,
+
+
+        //新参数
+        BASE_URL: '{:url("/")}',
+        API_URL: '{:url("api/index")}',
+        UPLOAD_TYPE: "{:SC('upload_type')}",
+        LOCAL_UPLOAD_URL: "{:url('Upload/up_local')}",
+        UPLOAD_MAX_SIZE: "{:SC('uploadmaxsize')}" * 1024,   //MB
+
+
+        APP_DEBUG: '{:APP_DEBUG}' == 1,
+        DEFAULT_IMG: {
+            avatar: '{:COM_RES}/img/avatar-default.jpg',
+            upfile: '{:IMG}/no_thumb.png'
+        },
+
+        accept_list: {
+            all: {
+                title: 'All',
+                cn: '全部',
+                extensions: '*',
+                mimeTypes: ''
+            },
+            image: {
+                title: 'Images',
+                cn: '图片',
+                extensions: 'gif,jpg,jpeg,bmp,png,ico',
+                mimeTypes: 'image/gif,image/jpeg,image/jpg,image/png'
+            },
+            video: {
+                title: 'Videos',
+                cn: '视频',
+                extensions: 'wmv,asf,asx,rm,rmvb,ram,avi,mpg,dat,mp4,mpeg,divx,m4v,mov,qt,flv,f4v,wma,ra,3gp,3g2,dv,vob,mkv,ts,swf,fla',
+                mimeTypes: 'video/wmv,video/avi,video/mp4,video/mpeg,video/m4v,video/flv,application/x-shockwave-flash'
+            },
+            audio: {
+                title: 'Audios',
+                cn: '音频',
+                extensions: 'mp3,wav,m4a,wma',
+                mimeTypes: 'audio/mp3,audio/wav,audio/m4a,audio/wma'
+            },
+            doc: {
+                title: 'Docs',
+                cn: '文档',
+                extensions: 'ppt,pptx,doc,docx,xls,xlsx,pdf,txt',
+                mimeTypes: 'application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf'
+            },
+            pdf: {
+                title: 'Pdf',
+                cn: 'pdf文档',
+                extensions: 'pdf',
+                mimeTypes: 'application/pdf'
+            },
+            file: {
+                title: 'Files',
+                cn: '压缩包',
+                extensions: 'zip,rar',
+                mimeTypes: 'application/zip,application/x-rar-compressed'
+            }
+        }
+    };
+
+    //格式化navigation
+    var formated_navigation = GV.site_navigation.slice(0);
+    formated_navigation.map( function ( nav ) {
+        nav.class_link = make_class_link( nav );
+        nav.class_link_html = '<a href="' + nav.class_link + '" target="'+ ( nav.type == 3 ? '_blank' : '_self' ) + '">'+nav.title+'</a>';
+        nav.position = make_position( nav );
+    });
+
+    function make_class_link( nav ) {
+        var _url = TP_url('lists', {classid: nav.id} ),
+            child = null;
+
+        if ( nav.type == 2 || nav.type == 3 ){
+            _url = nav.url;
+        }
+
+        if ( nav.type == 4 ){
+            child = formated_navigation.filter( function ( fn ) {
+                return fn.pid == nav.id;
+            });
+            if ( child.length > 0 ){
+                _url = TP_url('lists', {classid: child[0].id} )
+            }
+        }
+        return _url;
+    }
+
+    function make_position( nav ){
+        var index_pre = '<a href="/">首页</a>',
+            spacer = '<span class="position_space mx-1">&gt;</span>',
+            pos = '',
+            parent = null;
+        if ( !nav || !nav.id ) {
+            return index_pre;
+        }
+
+        if ( nav.pid == 0 ){
+            pos = index_pre + spacer + '<a href="' + nav.class_link + '">' + nav.title + '</a>';
+        }else{
+            formated_navigation.map( function ( all ) {
+                if ( all.id == nav.pid ){
+                    parent = all;
+                }
+            });
+            pos = make_position( parent ) + spacer + '<a href="' + nav.class_link + '">' + nav.title + '</a>';
+        }
+        return pos;
+    }
+    GV.site_navigation = formated_navigation;
+
+
+    formated_navigation.map( function ( fn, index ) {
+    })
+
+    Vue.prototype.$GV = GV;
+
+    Vue.prototype.$preview = function (url) {
+        if (!url) {
+            return false;
+        }
+        file_preview(url);
+    };
+
+    Vue.component('file_upload', VueUploadComponent)
+
+
+</script>
+
+<template id="com_navigation">
+        <el-row>
+            <el-col :span="24">
+                <el-menu  class="el_menu" mode="horizontal" background-color="#2d6edb" text-color="#fff">
+                    <el-menu-item :index="-1"><a class="top_nav" href="/" v-if=" fill_index ">首页</a></el-menu-item>
+                    <template v-for=" (nav,i) in nav_list ">
+                        <el-submenu :index="i" v-if="nav.child && nav.child.length">
+                            <template slot="title"> 
+                                <a class="top_nav" slot="activator" :href=" get_link( nav ) " :target=" nav.type == 3 ? '_blank' : '_self' ">{{ nav.title }}</a>
+                            </template>
+                            <a :href=" get_link( child, nav.id ) " :target=" child.type == 3 ? '_blank' : '_self' " v-for=" (child,sub_i) in nav.child ">
+                                <el-menu-item :index="i + '-' + sub_i"> 
+                                    <div>{{ child.title }}</div>
+                                </el-menu-item>
+                            </a>
+                        </el-submenu>
+                        <el-menu-item :index="i" v-else><a class="top_nav" :href=" get_link( nav ) " :target=" nav.type == 3 ? '_blank' : '_self' ">{{nav.title}}</a></el-menu-item>
+                    </template>
+                    
+                </el-menu>
+            </el-col>
+        </el-row>
+</template>
+
+<script>
+    Vue.component('com_navigation', {
+        props: ['fill_index', 'nav_data', 'class_id'],
+        data: function () {
+            return {
+                nav_list: [],
+                active_id: {},
+            }
+        },
+        created: function () {
+            var _this = this,
+                _active_id = _this.class_id > 0 ? parseInt(_this.class_id) : 0,
+                _nav_list = typeof _this.nav_data == 'string' ? JSON.parse(_this.nav_data) : _this.nav_data;
+            //            _this.active_id = _this.class_id > 0 ? parseInt( _this.class_id ) : 0;
+            if (_active_id > 0) {
+                var _in_top = false;
+                _nav_list.map(function (top) {
+                    if (top.id == _this.class_id) {
+                        _in_top = true;
+                    }
+                });
+                if (!_in_top) {    //非top菜单，遍历子菜单，目前只适合二级
+                    GV.site_navigation.map(function (gn) {
+                        if (gn.id == _active_id) {
+                            _active_id = gn.pid;
+                        }
+                    });
+                }
+            }
+       
+            _this.active_id = _active_id;
+//            api.send('tags_list', 'difficulty', function ( res ) {
+//                _nav_list.map( function ( nav ) {
+//                    if ( nav.id == 70 || nav.id == 71 ){
+//                        nav.child = res;
+//                    }
+//                });
+//                _this.nav_list = Object.assign({}, _nav_list);
+//            }, null, { loading_show: false});
+            _this.nav_list = _nav_list;
+        },
+        methods: {
+            get_link: function (nav, top_id) {
+                var _this = this,
+                    _type = nav.type > 0 ? parseInt(nav.type) : 0,
+                    _link = '#';
+
+                switch (_type) {
+                    case 4:
+                        if (nav.child && nav.child.length > 0) {
+                            _link = _this.$url('index/lists', { classid: nav.child[0].id });
+                        }
+                        break;
+                    case 2:
+                    case 3:
+                        _link = nav.url;
+                        break;
+                    case 1:
+                    default:
+                        _link = _this.$url('index/lists', { classid: nav.id });
+                        break;
+                }
+                if ( top_id && nav.group ){
+                    _link = _this.$url( 'index/lists', { classid: top_id,difficulty_id: nav.id } );
+                }
+                return _link;
+            }
+        },
+        template: '#com_navigation'
+    })
+</script>
+
+<template id="com_left_news">
+    <div class="left_news bg-white">
+        <div class="py-3 pl-3 f16 text-muted border_bottom">最新信息</div>
+        <div class="pa-3">
+            <a :href=" $url('index/show/arcid/'+item.id) " class="my-2 text-overflow f14" v-for=" item in data_list ">· {{item.title}}</a>
+        </div>
+    </div>
+</template>
+    
+<script>
+    Vue.component('com_left_news', {
+        data: function () {
+            return {
+                data_list:[],
+            }
+        },
+        created: function () {
+            var _this = this;
+            web.send('left_news','', function (res) {
+                _this.data_list = res.left_news_list || [];
+            }, null, { loading_show: false });
+        },
+        template: '#com_left_news'
+    })
+</script>

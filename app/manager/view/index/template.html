@@ -1,0 +1,299 @@
+<style type="text/css">
+
+</style>
+
+<template id="app_inside">
+    <div>
+        <!--页面标题栏-->
+        <v-toolbar flat color="white">
+
+            <v-toolbar-title>模板管理</v-toolbar-title>
+            <v-divider class="mx-2" inset vertical></v-divider>
+            <v-menu :close-on-content-click="false" offset-y slide-x max-width="500">
+                <v-btn slot="activator" color="warning" dark>
+                    <v-icon class="mr-2">help_outline</v-icon> 帮助
+                </v-btn>
+                <div class="pa-2 bg-white">
+                    <ol>
+                        <li>管理网站端模板（web模块下）</li>
+                    </ol>
+                </div>
+            </v-menu>
+
+            <v-spacer></v-spacer>
+            <v-btn @click="open_form_create()" color="primary" dark class="mb-2"><i class="fa fa-file-o mr-1"></i>新建文件</v-btn>
+            <!-- <v-btn @click="open_folder_create()" color="primary" dark class="mb-2"><i class="fa fa-plus-square-o mr-1"></i>新建文件夹</v-btn> -->
+
+            <!-- <v-dialog v-model="new_folder_create" lazy max-width="500px">
+                <v-card>
+                    <v-card-title>
+                        <div class="w9">
+                            <div class="title">新建文件夹</div>
+                        </div>
+                        <v-spacer></v-spacer>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text style="min-height: 200px;">
+                        <v-form ref="ref_form_create" lazy-validation>
+                            <v-text-field v-model="new_folder_name" label="文件夹名" :rules="[$com_rules.required, $com_rules.is_safety_path]"></v-text-field>
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="blue darken-1" flat @click.native="folder_submit_create()">提交保存</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog> -->
+
+            <v-dialog v-model="form_opened_create" lazy persistent max-width="800px">
+                <v-card>
+                    <v-card-title>
+                        <div class="w9">
+                            <div class="title">新建文件</div>
+                        </div>
+                        <v-spacer></v-spacer>
+                        <i class="fa fa-close f18 text-muted" @click="form_opened_create = false"></i>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text style="min-height: 550px;">
+                        <v-form ref="ref_form_create" lazy-validation>
+                            <v-text-field v-model="form_fields_create.file_name" :rules="[$com_rules.required, $com_rules.is_safety_path]"
+                                label="文件名，后缀名无需填写" :suffix="'.' + search_file_type"></v-text-field>
+                            <v-textarea v-model="form_fields_create.content" rows='26' label="文件内容"></v-textarea>
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="darken-1" flat @click="form_opened_create = false">关闭</v-btn>
+                        <v-btn color="blue darken-1" flat @click.native="form_submit_create()">提交保存</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+            <v-dialog v-model="form_opened_update" lazy persistent max-width="800px">
+                <v-card>
+                    <v-card-title>
+                        <div class="w9">
+                            <div class="title">编辑文件</div>
+                        </div>
+                        <v-spacer></v-spacer>
+                        <i class="fa fa-close f18 text-muted" @click="form_opened_update = false"></i>
+                    </v-card-title>
+                    <v-divider></v-divider>
+                    <v-card-text style="min-height: 550px;">
+                        <v-form ref="ref_form_update" lazy-validation>
+                            <v-text-field v-model="form_fields_update.file_name" disabled label="文件名，后缀名无需填写" suffix=".html"></v-text-field>
+                            <v-textarea v-model="form_fields_update.content" rows='26' label="文件内容"></v-textarea>
+                        </v-form>
+                    </v-card-text>
+                    <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="darken-1" flat @click="form_opened_update = false">关闭</v-btn>
+                        <v-btn color="blue darken-1" flat @click.native="form_submit_update()">提交保存</v-btn>
+                    </v-card-actions>
+                </v-card>
+            </v-dialog>
+
+        </v-toolbar>
+
+        <!--表格模板-->
+        <v-container fluid grid-list-xl>
+            <v-layout wrap align-center>
+                <v-flex sm4 d-flex>
+                    <v-select v-model="search_file_type" :items="search_file_type_items" label="选择操作文件类型"></v-select>
+                </v-flex>
+
+                <v-flex class="text-md-right" sm2>
+                    <v-btn @click="file_type_search()" color="primary" dark class="mb-2"><i class="fa fa-search mr-1"></i>搜索</v-btn>
+                </v-flex>
+            </v-layout>
+        </v-container>
+
+        <div class="pa-3 bg-white flex_center">
+            <div>当前位置：</div>
+            <div class="pa-2 text-primary hand" @click="change_dir_level(-1)">..</div>
+            <div>/</div>
+            <template v-for=" (dir, index) in dir_name ">
+                <div class="pa-2 text-primary hand" @click="change_dir_level(index)">{{ dir }}</div>
+                <div>/</div>
+            </template>
+        </div>
+
+        <v-data-table no-data-text="暂无数据" :headers="headers" :items="data_list" :loading="loading" hide-actions>
+            <template slot="items" slot-scope="props">
+                <td>
+                    <div class="hand f16" v-if="props.item.file_type" @click="open_form_update(props.item.file_name)">
+                        <i class="fa fa-file-code-o"></i>
+                        <span>{{ props.item.file_name}}</span>
+                    </div>
+                    <div class="hand f16" v-else @click="change_dir(props.item.file_name)">
+                        <i class="fa fa-folder-o"></i>
+                        <span>{{ props.item.file_name}}</span>
+                    </div>
+                </td>
+                <td>{{ props.item.file_time | get_time(2) }}</td>
+                <td>
+                    <v-icon @click.stop="delete_selected(props.item.file_name)" v-if="props.item.file_type">delete</v-icon>
+                    <!-- <v-icon @click.stop="delete_folder(props.item.file_name)" v-else>delete</v-icon> -->
+                </td>
+            </template>
+        </v-data-table>
+    </div>
+</template>
+
+
+<script>
+
+    var app_inside = {
+        data: function () {
+            return {
+                headers: [
+                    { text: '文件名', value: 'file_name' },
+                    { text: '修改时间', value: 'file_time', width: '200px' },
+                    { text: '操作', value: 'id', sortable: false, width: '140px' }
+                ],
+                loading: false,
+                search_file_type:'html',
+                search_file_type_items: ['html', 'css', 'js'],
+
+                dir_name: [],
+                data_list: [],
+
+                new_folder_create: false,
+                new_folder_name: '',
+
+                form_opened_create: false,
+                form_fields_create: {
+                    file_name: '',
+                    content: ''
+                },
+
+                form_opened_update: false,
+                form_fields_update: {
+                    file_name: '',
+                    content: ''
+                }
+            }
+        },
+        created: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        methods: {
+            //页面初始化，推荐统一编写，比较清晰
+            page_init: function () {
+                var _this = this;
+                _this.load_data();
+            },
+            load_data: function () {
+                var _this = this;
+                _this.loading = true;
+                api.send('get_template_list', { dir: _this.dir_name,file_ext_type:_this.search_file_type }, function (res) {
+                    _this.loading = false;
+                    _this.data_list = res;
+                }, null, { loading_show: false });
+            },
+
+            //位置跳转
+            change_dir_level: function (level) {
+                if (level == -1) {
+                    this.dir_name = [];
+                } else {
+                    this.dir_name.splice(level + 1, this.dir_name.length - level - 1)
+                }
+                this.load_data();
+            },
+            //进入目录
+            change_dir: function (dir) {
+                this.dir_name.push(dir);
+                this.load_data();
+            },
+
+            // //================文件夹操作
+            // //新建文件夹
+            // folder_submit_create: function () {
+            //     var _this = this;
+            //     api.send('create_folder', { file_ext_type:_this.search_file_type, dir_name: _this.dir_name, new_folder_name: _this.new_folder_name }, function (res) {
+            //         _this.new_folder_create = false;
+            //         _this.new_folder_name = '';
+            //         _this.load_data();
+            //         api.tips("新建文件夹成功", 'success');
+            //     });
+            // },
+            // open_folder_create: function () {
+            //     var _this = this;
+            //     _this.new_folder_create = true;
+            // },
+
+            // //删除文件夹
+            // delete_folder: function (folder_name) {
+            //     var _this = this;
+            //     api.confirm('确认删除吗？', '删除文件夹，将会删除该文件夹下所有文件', function () {
+            //         api.send('delete_folder', {file_ext_type:_this.search_file_type, dir_name: _this.dir_name, folder_name: folder_name }, function (res) {
+            //             _this.load_data();
+            //             api.tips('删除了' + res + ' 个文件/文件夹', 'success');
+            //         });
+            //     });
+            // },
+
+            //===============文件操作
+            open_form_update: function (name) {
+                var _this = this,
+                    _file_name = name.split('.')[0];
+
+                api.send('get_file_content', { file_ext_type:_this.search_file_type, file_name: _file_name, dir_name: _this.dir_name }, function (res) {
+                    _this.form_fields_update.content = res || '';
+                    _this.form_fields_update.file_name = _file_name;
+                    _this.form_opened_update = true;
+                }, null);
+            },
+
+            open_form_create: function () {
+                var _this = this;
+                _this.form_opened_create = true;
+            },
+
+            form_submit_create: function () {
+                var _this = this;
+                api.send('write_file', { file_ext_type:_this.search_file_type , type: 'create', file_name: _this.form_fields_create.file_name, dir_name: _this.dir_name, file_content: _this.form_fields_create.content }, function (res) {
+                    _this.form_opened_create = false;
+                    _this.form_fields_create.file_name = '';
+                    _this.form_fields_create.content = '';
+                    api.tips("新建文件成功", 'success');
+                    _this.load_data();
+                }, null);
+            },
+            form_submit_update: function () {
+                var _this = this;
+                api.send('write_file', { file_ext_type:_this.search_file_type , type: 'edit', file_name: _this.form_fields_update.file_name, dir_name: _this.dir_name, file_content: _this.form_fields_update.content }, function (res) {
+                    api.tips("编辑文件成功", 'success');
+                    _this.form_opened_update = false;
+                }, null);
+            },
+
+            delete_selected: function (file_name) {
+                var _this = this;
+                api.confirm('确认删除吗？', '删除后文件无法恢复，请慎重选择', function () {
+                    api.send('delete_file', { file_ext_type:_this.search_file_type , file_name: file_name.split('.')[0], dir_name: _this.dir_name }, function (res) {
+                        api.tips("删除成功", 'success');
+                        _this.load_data();
+                    }, null);
+                });
+            },
+
+            // =========================搜索
+            file_type_search:function(){
+                var _this = this;
+                _this.dir_name=[];
+                api.send('get_template_list', { dir: _this.dir_name,file_ext_type:_this.search_file_type }, function (res) {
+                    _this.loading = false;
+                    _this.data_list = res;
+                }, null, { loading_show: false });
+                console.log(_this.search_file_type)
+            }
+
+        },
+        template: '#app_inside'
+    }
+
+</script>

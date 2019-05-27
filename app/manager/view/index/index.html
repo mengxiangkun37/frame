@@ -1,0 +1,270 @@
+<style type="text/css">
+    .number_title {
+        font-size: 18px;
+    }
+
+    .number_list {
+        padding: 20px;
+        background-color: #ffffff;
+        width: 100%;
+    }
+
+    .number_item {
+        border-bottom: 1px solid #e7e7e7;
+        padding: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-content: center;
+        align-items: center;
+    }
+
+    .bg_card1 {
+        position: relative;
+        background: linear-gradient(-125deg, #57bdbf, #2f9de2);
+        min-height: 174px;
+        color: #ffffff;
+        margin-bottom: 20px;
+    }
+
+    .bg_card2 {
+        position: relative;
+        background: linear-gradient(-125deg, #60d3ad, rgb(4, 107, 90));
+        min-height: 174px;
+        color: #ffffff;
+        margin-bottom: 20px;
+    }
+
+    .bg_card3 {
+        position: relative;
+        background: linear-gradient(-113deg, #518aeb, #3f3deb);
+        min-height: 174px;
+        color: #ffffff;
+        margin-bottom: 20px;
+    }
+
+    .bg_card4 {
+        position: relative;
+        background: linear-gradient(-113deg, #ab5ddf, #6e07e4);
+        min-height: 174px;
+        color: #ffffff;
+        margin-bottom: 20px;
+    }
+
+    .bg_card5 {
+        position: relative;
+        background: linear-gradient(-113deg, #72c94a, #02470e);
+        min-height: 174px;
+        color: #ffffff;
+        margin-bottom: 20px;
+    }
+
+    .bg_card6 {
+        position: relative;
+        background: linear-gradient(-113deg, #da9a5f, #d1a52c);
+        min-height: 174px;
+        color: #ffffff;
+        margin-bottom: 20px;
+    }
+
+    .card-icon {
+        position: absolute;
+        right: 30px;
+        top: 50%;
+        margin-top: -35px;
+        font-size: 70px;
+        color: rgba(255, 255, 255, 0.12);
+    }
+
+    .l_img {
+        width: 50px;
+        height: 50px;
+    }
+
+    .title_line {
+        width: 4px;
+        height: 16px;
+        background: #00aeff;
+    }
+
+    .box_width {
+        max-width: 1200px;
+    }
+</style>
+
+<template id="app_inside">
+    <div>
+        <!--页面标题栏-->
+        <v-toolbar flat color="white">
+            <v-toolbar-title>系统概况</v-toolbar-title>
+            <v-divider class="mx-2" inset vertical></v-divider>
+            <v-spacer></v-spacer>
+        </v-toolbar>
+        <div class="ma-2 box_width">
+            <v-card>
+                <v-container fluid grid-list-lg>
+                    <div class="flex mb-2">
+                        <div class="title_line mr-1 mt-1"></div>
+                        <div class="f16">统计信息</div>
+                    </div>
+                    <v-layout wrap>
+                        <v-flex xs12 md4>
+                            <div class="bg_card1 mt-3 mr-3 w10">
+                                <div class="ml-3 mt-3">
+                                    <div class="mt-2 f15">试题</div>
+                                    <div class="mt-2 f28">{{question_count}}</div>
+                                    <div class="mt-2 f13">题库中试题数量</div>
+                                </div>
+                                <div>
+                                    <i class="fa fa-book card-icon"></i>
+                                </div>
+                            </div>
+                        </v-flex>
+                        <v-flex xs12 md4>
+                            <div class="bg_card2 mt-3 mr-3 w10">
+                                <div class="ml-3 mt-3">
+                                    <div class="mt-2 f15">分团</div>
+                                    <div class="mt-2 f28">{{sub_group_count}}</div>
+                                    <div class="mt-2 f13">当前分团数量</div>
+                                </div>
+                                <div>
+                                    <i class="fa fa-users card-icon"></i>
+                                </div>
+                            </div>
+                        </v-flex>
+                        <v-flex xs12 md4>
+                            <div class="bg_card3 mt-3 mr-3 w10">
+                                <div class="ml-3 mt-3">
+                                    <div class="mt-2 f15">协税者</div>
+                                    <div class="mt-2 f28">{{member_count}}</div>
+                                    <div class="mt-2 f13">协税者总人数</div>
+                                </div>
+                                <div>
+                                    <i class="fa fa-user card-icon"></i>
+                                </div>
+                            </div>
+                        </v-flex>
+                        <v-flex xs12 md4>
+                            <div class="bg_card4 mt-3 mr-3 w10">
+                                <div class="ml-3 mt-3">
+                                    <div class="mt-2 f15">个人协税者</div>
+                                    <div class="mt-2 f28">{{personal_count}}</div>
+                                    <div class="mt-2 f13">个人协税者人数</div>
+                                </div>
+                                <div>
+                                    <i class="fa fa-user-o card-icon"></i>
+                                </div>
+                            </div>
+                        </v-flex>
+                        <v-flex xs12 md4>
+                            <div class="bg_card5 mt-3 mr-3 w10">
+                                <div class="ml-3 mt-3">
+                                    <div class="mt-2 f15">单位协税者</div>
+                                    <div class="mt-2 f28">{{company_count}}</div>
+                                    <div class="mt-2 f13">单位协税者人数</div>
+                                </div>
+                                <div>
+                                    <i class="fa fa-user-circle-o card-icon"></i>
+                                </div>
+                            </div>
+                        </v-flex>
+                        <v-flex xs12 md4>
+                            <div class="bg_card6 mt-3 mr-3 w10">
+                                <div class="ml-3 mt-3">
+                                    <div class="mt-2 f15">退出</div>
+                                    <div class="mt-2 f28">{{out_count}}</div>
+                                    <div class="mt-2 f13">当前（申请退出及除名）人数</div>
+                                </div>
+                                <div>
+                                    <i class="fa fa-user-times card-icon"></i>
+                                </div>
+                            </div>
+                        </v-flex>
+                    </v-layout>
+                </v-container>
+            </v-card>
+        </div>
+        <!-- <div class="ma-2 box_width">
+            <v-card>
+                <v-container fluid grid-list-lg>
+                    <div class="flex mb-2">
+                        <div class="title_line mr-1 mt-1"></div>
+                        <div class="f16">今日概况</div>
+                    </div>
+                    <v-layout wrap class="mb-3 ml-3">
+                        <v-flex xs12 md3>
+                            <img class="l_img mr-2" src="/z/manager/img/logo_manager_index1.png" />
+                            <div class="ml-3 ">
+                                <div class="f15">销售额（元）</div>
+                                <div class="f25">{{sales_money}}</div>
+                            </div>
+                        </v-flex>
+                        <v-flex xs12 md3>
+                            <img class="l_img mr-2" src="/z/manager/img/logo_manager_index2.png" />
+                            <div class="ml-3">
+                                <div class="f15">卖出商品数</div>
+                                <div class="f25">{{ sell_goods }}</div>
+                            </div>
+                        </v-flex>
+                        <v-flex xs12 md3>
+                            <img class="l_img mr-2" src="/z/manager/img/logo_manager_index3.png" />
+                            <div class="ml-3">
+                                <div class="f15">已收款订单数</div>
+                                <div class="f25">{{ rece_count }}</div>
+                            </div>
+                        </v-flex>
+                        <v-flex xs12 md3>
+                            <img class="l_img mr-2" src="/z/manager/img/logo_manager_index4.png" />
+                            <div class="ml-3">
+                                <div class="f15">下单数</div>
+                                <div class="f25">{{ no_rece_count }}</div>
+                            </div>
+                        </v-flex>
+                    </v-layout>
+                </v-container>
+            </v-card>
+        </div> -->
+
+    </div>
+</template>
+
+
+<script>
+
+    var app_inside = {
+        data: function () {
+            return {
+                question_count: '',
+                sub_group_count: '',
+                member_count: '',
+                personal_count: '',
+                company_count: '',
+                out_count: '',
+            }
+        },
+        mounted: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        methods: {
+
+            //页面初始化，推荐统一编写，比较清晰
+            page_init: function () {
+                var _this = this;
+                _this.load_data();
+            },
+            load_data: function () {
+                var _this = this;
+                api.send('get_index_data', '', function (res) {
+                    _this.question_count = res.question_count;
+                    _this.sub_group_count = res.sub_group_count;
+                    _this.member_count = res.member_count;
+                    _this.personal_count = res.personal_count;
+                    _this.company_count = res.company_count;
+                    _this.out_count = res.out_count;
+                }, null, { loading_show: false });
+            },
+
+        },
+        template: '#app_inside'
+    }
+</script>

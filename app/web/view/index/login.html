@@ -1,0 +1,134 @@
+<style>
+    .login_card{
+        position:absolute;
+        right: 20px;
+        top: 80px;
+    }
+    .login_b{
+        position: relative;
+    }
+</style>
+<template id="app_inside">
+    <div class="fully">
+        <div class="login_back login_b" style="min-height:600px;">
+            <div class="login_card">
+                <el-card shadow="never">
+                    <div slot="header" class="clearfix">
+                        <span class="f18">登录</span>
+                    </div>
+                    <el-form :model="form" :rules="rules" ref="form">
+                        <el-form-item prop="phone">
+                            <el-input v-model="form.phone" style="width:300px;" :disabled="phone_status == 2"
+                                placeholder="请输入手机号" @input="check_phone"></el-input>
+                            <el-button disabled v-if=" phone_status == 2 ">{{ phone_second }}S重发</el-button>
+                            <el-button :disabled=" phone_status == 0 " v-if=" phone_status < 2 " @click="get_phone_code()"
+                                type="primary">获取验证码</el-button>
+                        </el-form-item>
+                        <el-form-item  v-if="code_sended" prop="phone_code">
+                            <el-input v-model="form.phone_code" style="width:300px;" type="number" placeholder="请输入验证码"></el-input>
+                            <el-button disabled type="success" v-if="form.phone_code.length > 4 ">已填写</el-button>
+                        </el-form-item>
+                    </el-form>
+                    <el-button type="primary" @click="do_login('form')">登 录</el-button>
+                    <div class="mt-2">
+                        <span>还没有账号？</span>
+                        <el-link :href=" $url('index/reg' ) " type="danger" class="mr-1">去注册</el-link>
+                        <span>成为协税志愿者</span>
+                    </div>
+                </el-card>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+    var app_inside = {
+        data: function () {
+            return {
+                form: {
+                    phone: '',
+                    phone_code: '',
+                },
+                rules: {
+                    phone: [
+                        { required: true, message: '请输入手机号', trigger: 'change' }
+                    ],
+                    phone_code: [
+                        { required: true, message: '请输入手机验证码', trigger: 'change' }
+                    ],
+                },
+                phone_status: 0,
+                code_sended: false,
+                phone_second:60
+            }
+        },
+        created: function () {
+            var _this = this;
+        },
+        watch: {
+
+        },
+        methods: {
+            page_init: function () {
+                var _this = this;
+            },
+            check_phone: function () {
+                var _this = this;
+                if (!(/^1[3456789]\d{9}$/.test(_this.form.phone))) {
+                    _this.phone_status = 0;
+                    return false;
+                }
+                _this.phone_status = 1;
+            },
+            get_phone_code: function () {
+                var _this = this;
+
+                if (_this.phone_status == 2 && _this.phone_second < 60) {
+                    layer.msg('手机号码有误');
+                    return false;
+                }
+                web.send('login_phone_code', { phone: _this.form.phone, type: 'login' }, function (res) {
+                    _this.$message({
+                        message: '验证码已发送，10分钟有效',
+                        type: 'success'
+                    });
+                    _this.code_sended = true;
+                    _this.phone_second = 60;
+                    _this.phone_timer = setInterval(function () {
+                        if (_this.phone_second == 0) {
+                            clearInterval(_this.phone_timer);
+                            _this.phone_status = 1;
+                        }
+                        _this.phone_second--;
+                    }, 1000);
+                    _this.phone_status = 2;
+                });
+            },
+            do_login: function (form) {
+                var _this = this,
+                    _fields = Object.assign({}, _this.form);
+                this.$refs[form].validate((valid) => {
+                    if (valid) {
+                        web.send('member_login', _fields, function (res) {
+                            _this.$message({
+                                message: '登录成功',
+                                type: 'success'
+                            });
+                            setTimeout(function () {
+                                redirect(_this.$url('index/personal'));
+                            }, 1000);
+                        }, null, { loading_show: false });
+                    } else {
+                        _this.$message({
+                            message: '请填写必填项',
+                            type: 'warning'
+                        });
+                    }
+                });
+            },
+
+        },
+
+        template: '#app_inside'
+    };
+</script>

@@ -1,0 +1,305 @@
+<style type="text/css">
+
+</style>
+
+<template id="app_inside">
+    <div>
+        <!--页面标题栏-->
+        <v-toolbar flat color="white">
+            <v-toolbar-title>个人协税者</v-toolbar-title>
+            <v-divider class="mx-2" inset vertical></v-divider>
+            <v-spacer></v-spacer>
+        </v-toolbar>
+      
+        <v-dialog v-model="open_info" max-width="700px">
+            <v-card>
+                <v-card-title>
+                    <div class="w9">
+                        <div class="title">{{info_detail.p_name}}的信息</div>
+                    </div>
+                    <v-spacer></v-spacer>
+                    <i class="fa fa-close f18 text-muted" @click="open_info = false"></i>
+                </v-card-title>
+                <v-divider></v-divider>
+                <div class="ma-3 f15">
+                    <v-layout row class="mb-2">
+                        <v-flex xs4>
+                            <div class="mr-1 text-muted">姓名：</div>
+                            <div>{{info_detail.p_name}}</div>
+                        </v-flex>
+                        <v-flex xs4>
+                            <div class="mr-1 text-muted">性别：</div>
+                            <div>{{ info_detail.p_sex }}</div>
+                        </v-flex>
+                        <v-flex xs4>
+                            <div class="mr-1 text-muted">民族：</div>
+                            <div>{{ info_detail.p_nationality }}</div>
+                        </v-flex>
+                    </v-layout>
+                    <v-layout row class="mb-2">
+                        <v-flex xs4>
+                            <div class="mr-1 text-muted">联系方式：</div>
+                            <div class="mr-4">{{ info_detail.p_phone }}</div>
+                        </v-flex>
+                        <v-flex xs4>
+                            <div class="mr-1 text-muted">身份证号：</div>
+                            <div class="mr-4">{{ info_detail.p_id_number }}</div>
+                        </v-flex>
+                        <v-flex xs4>
+                            <div class="mr-1 text-muted">教育程度：</div>
+                            <div class="mr-4">{{info_detail.p_education}}</div>
+                        </v-flex>
+                    </v-layout>
+                    <v-layout row class="mb-2">
+                        <v-flex xs4>
+                            <div class="mr-1 text-muted">专业：</div>
+                            <div class="mr-4">{{ info_detail.p_major }}</div>
+                        </v-flex>
+                        <v-flex xs4>
+                            <div class="mr-1 text-muted">职务：</div>
+                            <div class="mr-4">{{ info_detail.p_job }}</div>
+                        </v-flex>
+                        <v-flex xs4>
+                            <div class="mr-1 text-muted">微信号：</div>
+                            <div class="mr-4">{{ info_detail.p_wx }}</div>
+                        </v-flex>
+
+                    </v-layout>
+                    <v-layout row class="mb-2">
+                        <v-flex xs4>
+                            <div class="mr-1 text-muted">所在单位：</div>
+                            <div class="mr-4">{{ info_detail.p_company }}</div>
+                        </v-flex>
+                        <v-flex xs4>
+                            <div class="mr-1 text-muted">是否兼职：</div>
+                            <div class="mr-4">{{ info_detail.p_parttime_job }}</div>
+                        </v-flex>
+                        <v-flex xs4>
+                            <div class="mr-1 text-muted">电子邮箱：</div>
+                            <div class="mr-4">{{ info_detail.p_email }}</div>
+                        </v-flex>
+                    </v-layout>
+                    <v-divider></v-divider>
+                    <div class="ma-3">
+                        <v-layout row class="mb-3">
+                            <v-flex xs2>
+                                <div class="text-muted">所在地：</div>
+                            </v-flex>
+                            <v-flex xs10>
+                                <div>{{info_detail.province}}{{info_detail.city}}{{info_detail.area}}</div>
+                            </v-flex>
+                        </v-layout>
+                        <v-layout row class="mb-3">
+                            <v-flex xs2>
+                                <div class="text-muted">详细地址：</div>
+                            </v-flex>
+                            <v-flex xs10>
+                                <div>{{info_detail.address}}</div>
+                            </v-flex>
+                        </v-layout>
+                        <v-layout row class="mb-3">
+                            <v-flex xs2>
+                                <div class="text-muted">工作简历：</div>
+                            </v-flex>
+                            <v-flex xs10>
+                                <div>{{info_detail.p_resume}}</div>
+                            </v-flex>
+                        </v-layout>
+                        <v-layout row class="mb-3">
+                            <v-flex xs2>
+                                <div class="text-muted">志愿服务经历：</div>
+                            </v-flex>
+                            <v-flex xs10>
+                                <div>{{info_detail.p_experience}}</div>
+                            </v-flex>
+                        </v-layout>
+                        <v-layout row class="mb-3">
+                            <v-flex xs2>
+                                <div class="text-muted">专业特长：</div>
+                            </v-flex>
+                            <v-flex xs10>
+                                <div>{{info_detail.p_specialty}}</div>
+                            </v-flex>
+                        </v-layout>
+                        <v-layout row class="mb-3">
+                            <v-flex xs2>
+                                <div class="text-muted">承诺内容：</div>
+                            </v-flex>
+                            <v-flex xs10>
+                                <div>{{info_detail.p_promise}}</div>
+                            </v-flex>
+                        </v-layout>
+                        <v-layout row class="mb-3">
+                            <v-flex xs3>
+                                <div class="text-muted">自愿提供的服务内容：</div>
+                            </v-flex>
+                            <v-flex xs9>
+                                <div>{{info_detail.p_service_content}}</div>
+                            </v-flex>
+                        </v-layout>
+                    </div>
+
+                </div>
+                <v-card-actions>
+                    <v-spacer></v-spacer>
+                    <v-btn color="darken-1" flat @click="open_info = false">关闭</v-btn>
+                </v-card-actions>
+            </v-card>
+        </v-dialog>
+        <com_search ref="search" :search_config.sync=" search " :auto_make="{ order: 2, page_size: 1}" @do_search=" load_data "></com_search>
+        <!--表格模板-->
+        <v-data-table no-data-text="暂无数据" :headers="headers" :items="data_list" :pagination.sync="pagination" :loading="loading"
+            hide-actions>
+            <template slot="items" slot-scope="props">
+                <td>{{ props.item.p_name }}</td>
+                <td>{{ props.item.p_sex }}</td>
+                <!-- <td>{{ props.item.p_nationality }}</td> -->
+                <td>{{ props.item.p_phone }}</td>
+                <td>{{ props.item.p_id_number }}</td>
+                <td>{{ props.item.p_wx }}</td>
+                <!-- <td>{{ props.item.p_company }}</td>
+                <td>{{ props.item.province }}/{{ props.item.city }}/{{ props.item.area }}</td>
+                <td>{{ props.item.address }}</td> -->
+                <td v-if="props.item.status>-1">
+                    <div class="flex">
+                        <v-btn flat icon color="primary" @click="show_info(props.item)">
+                            <v-icon>account_circle</v-icon>
+                        </v-btn>
+                        <v-btn flat icon color="error" @click="expel(props.item)">
+                            <v-icon>remove</v-icon>
+                        </v-btn>
+                    </div>
+                </td>
+                <td v-else>
+                    <div class="flex">
+                        <v-btn color="primary" flat icon @click="show_info(props.item)">
+                            <v-icon>account_circle</v-icon>
+                        </v-btn>
+                        <v-btn flat icon color="green" @click="recovery(props.item.id)">
+                            <v-icon dark>add</v-icon>
+                        </v-btn>
+                    </div>
+                </td>
+            </template>
+        </v-data-table>
+        <v-container fluid class="px-0 py-2 bg-white">
+            <v-layout row>
+                <v-flex xs12 md6>
+                </v-flex>
+                <v-flex xs6 md6 align-center justify-end>
+                    <div class="d-inlineblock f12 text-muted">总 {{this.total_count}} 条</div>
+                    <v-pagination :disabled="loading" v-model="page" @input=" load_data() " :length="total_pages"
+                        total-visible="9"></v-pagination>
+                </v-flex>
+            </v-layout>
+        </v-container>
+    </div>
+</template>
+<script>
+    var app_inside = {
+        data: function () {
+            return {
+                headers: [
+                    { text: '姓名', value: 'p_name', sortable: false },
+                    { text: '性别', value: 'p_sex', sortable: false },
+                    // { text: '民族', value: 'p_nationality', sortable: false },
+                    { text: '联系方式', value: 'p_phone', sortable: false },
+                    { text: '身份证号', value: 'p_id_number', sortable: false },
+                    { text: '微信号', value: 'p_wx', sortable: false },
+                    // { text: '所在单位', value: 'p_company', sortable: false },
+                    // { text: '省/市/区', value: 'ssq', sortable: false },
+                    // { text: '详细地址', value: 'address', sortable: false },
+                    { text: '操作', value: 'id', sortable: false, width: '100px' }
+                ],
+                pagination: {
+                    rowsPerPage: -1,
+                    sortBy: null
+                },
+                selected: [],
+
+                page_size: 20,
+                page: 1,
+                total_count: 0,
+                data_list: [],
+                loading: false,
+                search: [
+                    {
+                        field: 'p_name',
+                        type: 'text',
+                        label: '姓名查找',
+                        value: null
+                    }
+                ],
+                // 详情
+                open_info: false,
+                info_detail: {}
+            }
+        },
+        created: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        computed: {
+            total_pages: function () {  //分页的总页数获取，不用动
+                if (this.page_size == null || this.total_count == null) return 0;
+                return Math.ceil(this.total_count / this.page_size)
+            }
+        },
+        methods: {
+
+            //页面初始化，推荐统一编写，比较清晰
+            page_init: function () {
+                var _this = this;
+                _this.load_data();
+            },
+            //表格加载与方法
+            load_data: function (reload) {
+                var _this = this,
+                    _fields = {
+                        page: reload ? 1 : _this.page,
+                        page_size: _this.page_size,
+                        search: arguments[1]
+                    };
+                //通用方法
+                if (typeof arguments[1] == 'undefined') { _this.$nextTick(function () { _this.$refs.search.do_search(); }); return false; }
+                if (reload) _this.page = 1;
+                if (_this.loading) return false;
+                _fields.search.push({ field: 'type', value: 1, type: 'select' });
+                _this.loading = true;
+                //开始读取数据
+                api.send('get_member_list', _fields, function (res) {
+                    _this.total_count = res.total_count;
+                    _this.data_list = res.data_list || [];
+                    _this.loading = false;
+                }, null, { loading_show: false });
+            },
+            expel: function (id) {
+                var _this = this;
+                api.confirm('确认除名吗？', '', function () {
+                    api.send('expel_member', { id: id }, function (res) {
+                        api.tips('除名成功！', 'success');
+                        _this.$refs.search.do_search();
+                    }, null, { loading_show: false });
+                });
+            },
+            recovery: function (id) {
+                var _this = this;
+                api.confirm('确认恢复身份吗？', '', function () {
+                    api.send('recovery_member', { id: id }, function (res) {
+                        api.tips('恢复成功！', 'success');
+                        _this.$refs.search.do_search();
+                    }, null, { loading_show: false });
+                });
+            },
+
+            show_info: function (item) {
+                var _this = this;
+                _this.info_detail = Object.assign({}, item);
+                _this.open_info = true;
+            }
+
+        },
+        template: '#app_inside'
+    }
+
+</script>

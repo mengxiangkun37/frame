@@ -1,0 +1,205 @@
+<style type="text/css">
+</style>
+
+<template id="app_inside">
+    <div>
+        <v-toolbar flat color="white">
+            <v-toolbar-title class="pr-2">
+                <span>资源管理</span>
+            </v-toolbar-title>
+            <v-divider class="ml-2" inset vertical></v-divider>
+            <v-toolbar-title>
+            </v-toolbar-title>
+            <v-spacer></v-spacer>
+        </v-toolbar>
+
+        <com_search ref="search" :search_config.sync=" search " @do_search=" load_data "></com_search>
+        <!--表格模板-->
+        <v-data-table v-model="selected" :headers="headers" :items="data_list" no-data-text="暂无数据" :pagination.sync="pagination"
+            :loading="loading" hide-actions select-all>
+            <template slot="items" slot-scope="props">
+                <td>
+                    <v-checkbox v-model="props.selected" primary hide-details></v-checkbox>
+                </td>
+                <td>{{ props.item.id }}</td>
+                <td>{{ props.item.filename }}</td>
+                <td>{{ props.item.ext }}</td>
+                <td>{{ $get_field( {id: props.item.group_id}, file_group_list, 'group_name' ) }}</td>
+                <td>{{ props.item.time | get_time(2) }}</td>
+                <td>{{ props.item.upload_ip }}</td>
+            </template>
+        </v-data-table>
+
+        <v-container fluid class="px-0 py-2 bg-white">
+            <v-layout row>
+                <v-flex xs6>
+                    <v-menu top offset-y max-height="300" :disabled="selected.length == 0">
+                        <v-btn slot="activator" :disabled="selected.length == 0">
+                            <i class="fa fa-long-arrow-right mr-1"></i>
+                            <span>批量移动</span>
+                            <span v-if=" selected.length " class="ml-1">({{selected.length}})</span>
+                        </v-btn>
+                        <v-list>
+                            <v-list-tile v-for="(item, index) in file_group_list" :key="index" @click=" batch_move( item ) ">
+                                <v-list-tile-title>{{ item.group_name }}</v-list-tile-title>
+                            </v-list-tile>
+                        </v-list>
+                    </v-menu>
+                    <v-btn color="error" @click=" batch_delete() " :disabled="selected.length == 0">
+                        <i class="fa fa-remove mr-1"></i>
+                        <span>批量删除</span>
+                        <span v-if=" selected.length " class="ml-1">({{selected.length}})</span>
+                    </v-btn>
+                </v-flex>
+                <v-flex xs6 align-center justify-end>
+                    <div class="d-inlineblock f12 text-muted">总 {{this.total_count}} 条</div>
+                    <v-pagination :disabled="loading" v-model="page" @input=" load_data() " :length="total_pages"
+                        total-visible="9"></v-pagination>
+                </v-flex>
+            </v-layout>
+        </v-container>
+
+
+    </div>
+</template>
+
+
+<script>
+
+    var app_inside = {
+        data: function () {
+            return {
+                headers: [
+                    { text: 'ID', value: 'id', width: '30px' },
+                    { text: '文件名', value: 'filename', sortable: false },
+                    { text: '后缀', value: 'ext', sortable: false },
+                    { text: '所属分组', value: 'group_id' },
+                    { text: '上传日期', value: 'time' },
+                    { text: '上传IP', value: 'upload_ip', sortable: false }
+                ],
+                //翻页的配置，必须写
+                pagination: {
+                    rowsPerPage: -1,     //显示全部，推荐-1
+                    sortBy: null         //默认排序字段，推荐设置，descending = true && sortBy = 'id' 即 id desc
+                },
+                selected: [],
+
+                //分页的配置，可自定义
+                page_size: 20,
+                page: 1,
+                total_count: 0,
+                data_list: [],
+                loading: false,
+
+                search: [
+                    {
+                        field: 'group_id',
+                        type: 'select',
+                        itemText: 'group_name',
+                        list: [],
+                        label: '过滤分组',
+                        value: null
+                    },
+                    {
+                        field: 'ext',
+                        type: 'multiple',
+                        itemText: 'cn',
+                        itemValue: 'extensions',
+                        list: [],
+                        label: '过滤文件类型',
+                        value: null,
+                    }
+                ],
+
+                file_group_list: [],
+                type_list: GV.accept_list,
+                file_type_list: []
+
+            }
+        },
+        created: function () {
+            var _this = this;
+            _this.page_init();
+        },
+        computed: {
+            total_pages: function () {  //分页的总页数获取，不用动
+                if (this.page_size == null || this.total_count == null) return 0;
+                return Math.ceil(this.total_count / this.page_size)
+            },
+        },
+        methods: {
+
+            //页面初始化，推荐统一编写，比较清晰
+            page_init: function () {
+                var _this = this;
+                _this.load_data();
+            },
+            //表格加载与方法
+            load_data: function (reload) {
+                var _this = this,
+                    _fields = {
+                        page: reload ? 1 : _this.page,
+                        page_size: _this.page_size,
+                        search: arguments[1]
+                    };
+                //通用方法
+                if (reload) _this.page = 1;
+                if (_this.loading) return false;
+                _this.loading = true;
+
+                for (const key in _this.type_list) {
+                    if(key != 'all'){
+                        _this.file_type_list.push(_this.type_list[key]);
+                    }
+                }
+
+                api.send('get_files_list', _fields, function (res) {
+                    _this.total_count = res.total_count;
+                    _this.data_list = res.data_list || [];
+                    _this.$refs.search.make_search_list('group_id', res.files_group, true);
+                    _this.$refs.search.make_search_list('ext', _this.file_type_list, true);
+                    _this.file_group_list = res.files_group || [];
+                    _this.loading = false;
+                });
+            },
+            batch_move: function (item) {
+                var _this = this,
+                    _ids = [];
+
+                this.selected.map(function (s) {
+                    _ids.push(s.id);
+                });
+                if (!_ids.length || !item.id) {
+                    api.tips('先选择再操作', 'cyan');
+                    return false;
+                }
+                api.send('file_move', { group_id: item.id, ids: _ids }, function (res) {
+                    _this.selected = [];
+                    _this.$refs.search.do_search();
+                    api.tips('成功移动了 ' + res + ' 条记录', 'success');
+                });
+            },
+
+            batch_delete: function () {
+                var _this = this,
+                    _ids = [];
+                this.selected.map(function (s) {
+                    _ids.push(s.id);
+                });
+                if (!_ids.length) {
+                    api.tips('先选择再操作', 'cyan');
+                    return false;
+                }
+                api.confirm('确认删除吗？', '删除后无法恢复', function () {
+                    api.send('file_delete', { id: _ids }, function (res) {
+                        _this.selected = [];
+                        _this.$refs.search.do_search();
+                        api.tips('成功删除了' + res + '条记录', 'success');
+                    });
+                });
+            },
+        },
+        template: '#app_inside'
+    }
+
+</script>
