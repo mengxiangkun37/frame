@@ -11,7 +11,7 @@
 
 return [
    'hostname'        => 'localhost',
-   'database'        => 'xieshui',
+   'database'        => 'kuangjia',
    'username'        => 'root',
    'password'        => 'root',
 
