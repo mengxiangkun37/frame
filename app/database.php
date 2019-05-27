@@ -10,16 +10,10 @@
 // +----------------------------------------------------------------------
 
 return [
-
-    'hostname'        => 'pinyong100.mysql.rds.aliyuncs.com',
-    'database'        => 'db_xieshui',
-    'username'        => 'rds_xieshui',
-    'password'        => 'zUUCZFzA1rzFCqXg',
-
-//    'hostname'        => 'localhost',
-//    'database'        => 'xieshui',
-//    'username'        => 'root',
-//    'password'        => 'root',
+   'hostname'        => 'localhost',
+   'database'        => 'kuangjia',
+   'username'        => 'root',
+   'password'        => 'root',
 
     // 数据库类型
     'type'            => 'mysql',
